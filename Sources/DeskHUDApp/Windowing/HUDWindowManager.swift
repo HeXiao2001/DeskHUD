@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import DeskHUDCore
 import SwiftUI
 
@@ -218,6 +219,10 @@ final class HUDWindowManager {
         dockBandHeight: CGFloat,
         mouseLocation: NSPoint?
     ) -> NSRect {
+        if let accessibilityRect = accessibilityDockRect(in: screenFrame) {
+            return accessibilityRect.insetBy(dx: -10, dy: 0)
+        }
+
         let baseWidth = min(screenFrame.width * 0.64, max(620, screenFrame.width * 0.48))
         var minX = screenFrame.midX - baseWidth / 2
         var maxX = screenFrame.midX + baseWidth / 2
@@ -231,6 +236,90 @@ final class HUDWindowManager {
         minX = max(screenFrame.minX, minX)
         maxX = min(screenFrame.maxX, maxX)
         return NSRect(x: minX, y: screenFrame.minY, width: max(0, maxX - minX), height: dockBandHeight)
+    }
+
+    private func accessibilityDockRect(in screenFrame: NSRect) -> NSRect? {
+        guard AXIsProcessTrusted() else { return nil }
+        guard let dockApp = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == "com.apple.dock" }) else {
+            return nil
+        }
+
+        let dockElement = AXUIElementCreateApplication(dockApp.processIdentifier)
+        guard let children = accessibilityChildren(of: dockElement) else { return nil }
+
+        for child in children {
+            guard accessibilityString(kAXRoleAttribute, of: child) == kAXListRole else { continue }
+            guard accessibilityString(kAXOrientationAttribute, of: child) == kAXHorizontalOrientationValue else { continue }
+            guard let topLeftRect = accessibilityRect(of: child) else { continue }
+            let appKitRect = convertTopLeftRectToAppKit(topLeftRect, in: screenFrame)
+            guard appKitRect.intersects(screenFrame) else { continue }
+            return appKitRect.intersection(screenFrame)
+        }
+
+        return nil
+    }
+
+    private func accessibilityChildren(of element: AXUIElement) -> [AXUIElement]? {
+        var value: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &value)
+        guard result == .success else { return nil }
+        return value as? [AXUIElement]
+    }
+
+    private func accessibilityString(_ attribute: String, of element: AXUIElement) -> String? {
+        var value: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
+        guard result == .success else { return nil }
+        return value as? String
+    }
+
+    private func accessibilityRect(of element: AXUIElement) -> NSRect? {
+        guard let position = accessibilityPoint(kAXPositionAttribute, of: element),
+              let size = accessibilitySize(kAXSizeAttribute, of: element) else {
+            return nil
+        }
+        return NSRect(origin: position, size: size)
+    }
+
+    private func accessibilityPoint(_ attribute: String, of element: AXUIElement) -> NSPoint? {
+        var value: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
+        guard result == .success,
+              let value,
+              CFGetTypeID(value) == AXValueGetTypeID() else {
+            return nil
+        }
+
+        let axValue = value as! AXValue
+        guard AXValueGetType(axValue) == .cgPoint else { return nil }
+        var point = CGPoint.zero
+        AXValueGetValue(axValue, .cgPoint, &point)
+        return point
+    }
+
+    private func accessibilitySize(_ attribute: String, of element: AXUIElement) -> NSSize? {
+        var value: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
+        guard result == .success,
+              let value,
+              CFGetTypeID(value) == AXValueGetTypeID() else {
+            return nil
+        }
+
+        let axValue = value as! AXValue
+        guard AXValueGetType(axValue) == .cgSize else { return nil }
+        var size = CGSize.zero
+        AXValueGetValue(axValue, .cgSize, &size)
+        return size
+    }
+
+    private func convertTopLeftRectToAppKit(_ rect: NSRect, in screenFrame: NSRect) -> NSRect {
+        NSRect(
+            x: rect.minX,
+            y: screenFrame.maxY - rect.maxY,
+            width: rect.width,
+            height: rect.height
+        )
     }
 
     private func frameForSideDockSlot(
