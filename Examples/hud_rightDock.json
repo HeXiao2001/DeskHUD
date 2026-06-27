@@ -1,12 +1,10 @@
 {
   "sections": [
     {
-      "id": "live",
-      "title": "Live",
+      "id": "summary",
+      "title": null,
       "items": [
-        { "id": "ai-progress", "type": "progress", "kind": "aiProgress", "title": "Claude Code", "label": "Building DeskHUD", "value": 0.64, "state": "thinking" },
-        { "id": "current-tool", "type": "text", "kind": "focus", "title": "Tool", "subtitle": "Edit", "time": "14:32" },
-        { "id": "branch", "type": "status", "kind": "systemStatus", "title": "Branch", "label": "main", "state": "ok" }
+        { "id": "s1", "type": "status", "kind": "systemStatus", "title": "Branch", "label": "main", "state": "ok" }
       ]
     }
   ],

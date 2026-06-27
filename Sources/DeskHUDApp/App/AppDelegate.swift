@@ -124,7 +124,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         doc.slots[leftIndex].sections = [
-            HUDSection(id: "agenda", title: "Agenda", items: items)
+            HUDSection(id: "agenda", title: nil, items: items)
         ]
         doc.slots[leftIndex].items = items
         return doc

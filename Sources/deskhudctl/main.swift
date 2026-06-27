@@ -31,18 +31,18 @@ struct DeskHUDCTL {
     }
 
     private static func sample(_ args: [String]) {
-        let name = args.first ?? "minimal"
+        let name = args.first ?? "left"
         switch name {
-        case "minimal":
-            print(Self.minimalSample)
+        case "left", "minimal":
+            print(Self.leftSample)
+        case "right":
+            print(Self.rightSample)
         case "todo":
             print(Self.todoSample)
-        case "live":
-            print(Self.liveSample)
         case "full":
             print(Self.fullSample)
         default:
-            fputs("Unknown sample: \(name). Try: minimal, todo, live, full\n", stderr)
+            fputs("Unknown sample: \(name). Try: left, right, todo, full\n", stderr)
             Foundation.exit(2)
         }
     }
@@ -84,16 +84,17 @@ struct DeskHUDCTL {
         Commands:
           deskhudctl schema                  Print complete JSON field reference
           deskhudctl sample <name>           Output a ready-to-use HUD JSON template
-            names: minimal  todo  live  full
+            names: left  right  todo  full
           deskhudctl slot                    Output per-slot content template
           deskhudctl validate hud <path>     Validate a HUD content file
           deskhudctl validate config <path>  Validate a config file
           deskhudctl status                  Show app status
 
         Examples:
-          deskhudctl schema                  # AI: read this to learn the format
-          deskhudctl sample todo > hud_leftDock.json
-          deskhudctl sample live > hud_rightDock.json
+          deskhudctl schema                   # AI: read this for the full format
+          deskhudctl sample left > hud_leftDock.json
+          deskhudctl sample right > hud_rightDock.json
+          deskhudctl sample todo              # task list variant
           deskhudctl validate hud hud_leftDock.json
         """)
     }
@@ -101,6 +102,17 @@ struct DeskHUDCTL {
     private static func printSchema() {
         print("""
         # DeskHUD File Format Reference
+
+        ## Convention — which file to edit
+
+        | File | Panel | Purpose |
+        |------|-------|---------|
+        | `hud_leftDock.json` | Left | Tasks, todos, schedule, focus |
+        | `hud_rightDock.json` | Right | Summary status, git branch, live progress |
+
+        - Writers edit per-slot files directly — each file is independent.
+        - Use `hud_leftDock.json` for agenda items, `hud_rightDock.json` for status.
+        - Write atomically: write to `.tmp`, flush, rename to `.json`.
 
         ## HUD Document (hud.json or full document)
         {
@@ -186,7 +198,7 @@ struct DeskHUDCTL {
         """)
     }
 
-    private static let minimalSample = """
+    private static let leftSample = """
     {
       "version": 1,
       "slots": [
@@ -234,31 +246,23 @@ struct DeskHUDCTL {
     }
     """
 
-    /// Real-time status for AI / tool writers.  One section with progress, tool, branch + time.
-    private static let liveSample = """
+    /// Right panel — summary status, git branch, brief indicators.
+    private static let rightSample = """
     {
-      "version": 1,
-      "slots": [
+      "sections": [
         {
-          "id": "rightDock", "anchor": "dock.right",
-          "rotation": { "enabled": false, "intervalSeconds": 45 },
-          "sections": [
-            {
-              "id": "live", "title": "Live",
-              "items": [
-                { "id": "p1", "type": "progress", "kind": "aiProgress", "title": "Claude Code", "label": "Building", "value": 0.62, "state": "thinking" },
-                { "id": "f1", "type": "text",    "kind": "focus",     "title": "Tool", "subtitle": "Edit", "time": "14:32" },
-                { "id": "s1", "type": "status",  "kind": "systemStatus", "title": "Branch", "label": "main", "state": "ok" }
-              ]
-            }
-          ],
-          "items": []
+          "id": "summary", "title": null,
+          "items": [
+            { "id": "r1", "type": "status", "kind": "systemStatus", "title": "Branch", "label": "main", "state": "ok" },
+            { "id": "r2", "type": "text",   "kind": "today", "title": "Last sync", "subtitle": "14:32" }
+          ]
         }
-      ]
+      ],
+      "items": []
     }
     """
 
-    /// Both sides populated — tasks on the left, live AI status on the right.
+    /// Full master document showing both panels. Per-slot files are preferred.
     private static let fullSample = """
     {
       "version": 1,
@@ -267,14 +271,14 @@ struct DeskHUDCTL {
           "id": "leftDock", "anchor": "dock.left",
           "rotation": { "enabled": true, "intervalSeconds": 30 },
           "sections": [
-            {
-              "id": "tasks", "title": "Tasks",
-              "items": [
-                { "id": "t1", "type": "status", "kind": "todo", "title": "Schema for todos",     "state": "done" },
-                { "id": "t2", "type": "status", "kind": "todo", "title": "Real-time progress",   "state": "running" },
-                { "id": "t3", "type": "status", "kind": "todo", "title": "File watcher",          "state": "pending" }
-              ]
-            }
+            { "id": "focus", "title": "Focus", "items": [
+              { "id": "f1", "type": "text", "kind": "today", "title": "DeskHUD", "subtitle": "Ship display core" }
+            ]},
+            { "id": "tasks", "title": "Tasks", "items": [
+              { "id": "t1", "type": "status", "kind": "todo", "title": "Design schema",  "state": "done" },
+              { "id": "t2", "type": "status", "kind": "todo", "title": "Build renderer", "state": "running" },
+              { "id": "t3", "type": "status", "kind": "todo", "title": "Write tests",    "state": "pending" }
+            ]}
           ],
           "items": []
         },
@@ -282,14 +286,9 @@ struct DeskHUDCTL {
           "id": "rightDock", "anchor": "dock.right",
           "rotation": { "enabled": false, "intervalSeconds": 45 },
           "sections": [
-            {
-              "id": "live", "title": "Live",
-              "items": [
-                { "id": "p1", "type": "progress", "kind": "aiProgress", "title": "Claude Code", "label": "Building", "value": 0.62, "state": "thinking" },
-                { "id": "f1", "type": "text",    "kind": "focus",     "title": "Tool", "subtitle": "Edit", "time": "14:32" },
-                { "id": "s1", "type": "status",  "kind": "systemStatus", "title": "Branch", "label": "main", "state": "ok" }
-              ]
-            }
+            { "id": "summary", "title": null, "items": [
+              { "id": "s1", "type": "status", "kind": "systemStatus", "title": "Branch", "label": "main", "state": "ok" }
+            ]}
           ],
           "items": []
         }

@@ -298,9 +298,8 @@ final class HUDWindowManager {
             let section = sections[state.sectionIndex]
             let count = section.items.count
             guard count > 0 else { continue }
-            // Advance one visible page at a time
-            let visible = maxVisibleItemCount()
-            state.scrollOffset = (state.scrollOffset + max(1, visible - 1)) % max(1, count)
+            // Advance one item at a time for smooth browsing
+            state.scrollOffset = (state.scrollOffset + 1) % max(1, count)
             slotStates[slot.id] = state
             changed = true
         }
