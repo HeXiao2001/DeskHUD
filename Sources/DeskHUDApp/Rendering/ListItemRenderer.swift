@@ -6,24 +6,24 @@ final class ListItemRenderer: HUDItemRenderer {
 
     @MainActor
     func body(for item: HUDItem, config: HUDConfig) -> AnyView {
-        AnyView(ListItemBody(item: item, maxLines: config.window.maxLines))
+        AnyView(ListItemBody(item: item, config: config))
     }
 }
 
 private struct ListItemBody: View {
     let item: HUDItem
-    let maxLines: Int
+    let config: HUDConfig
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            HUDTypography.title(for: item)
+            HUDTypography.title(for: item, opacity: config.window.textOpacity)
             ForEach(
-                Array((item.lines ?? []).prefix(maxLines).enumerated()),
+                Array((item.lines ?? []).prefix(config.window.maxLines).enumerated()),
                 id: \.offset
             ) { _, line in
                 Text(line)
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.74))
+                    .foregroundStyle(.white.opacity(config.window.textOpacity * 0.7))
                     .lineLimit(1)
             }
         }

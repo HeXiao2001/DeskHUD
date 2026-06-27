@@ -58,6 +58,7 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
     public var opacity: Double
     public var maxLines: Int
     public var contentDensity: ContentDensity
+    public var textOpacity: Double
     public var scrollIntervalSeconds: Double
 
     public init(
@@ -66,7 +67,8 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
         margin: Double = 18,
         cornerRadius: Double = 14,
         opacity: Double = 0.82,
-        maxLines: Int = 2,
+        maxLines: Int = 1,
+        textOpacity: Double = 0.85,
         contentDensity: ContentDensity = .comfortable,
         scrollIntervalSeconds: Double = 4
     ) {
@@ -76,6 +78,7 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
         self.cornerRadius = cornerRadius
         self.opacity = opacity
         self.maxLines = maxLines
+        self.textOpacity = textOpacity
         self.contentDensity = contentDensity
         self.scrollIntervalSeconds = scrollIntervalSeconds
     }

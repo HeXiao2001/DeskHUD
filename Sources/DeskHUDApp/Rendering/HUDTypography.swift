@@ -8,20 +8,22 @@ enum HUDTypography {
         case secondary
     }
 
-    static func title(for item: HUDItem) -> some View {
+    static func title(for item: HUDItem, opacity: Double = 0.85) -> some View {
         Text(item.title ?? item.kind ?? item.id)
             .font(.system(size: 13, weight: .semibold, design: .rounded))
-            .foregroundStyle(.white)
+            .foregroundStyle(.white.opacity(opacity))
             .lineLimit(1)
     }
 
     @ViewBuilder
-    static func optional(_ text: String?, style: TextStyle) -> some View {
+    static func optional(_ text: String?, style: TextStyle, opacity: Double = 0.85) -> some View {
         if let text, !text.isEmpty {
             Text(text)
                 .font(.system(size: style == .secondary ? 11 : 12,
                               weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(style == .secondary ? 0.62 : 0.76))
+                .foregroundStyle(.white.opacity(
+                    style == .secondary ? opacity * 0.65 : opacity * 0.8
+                ))
                 .lineLimit(1)
         }
     }

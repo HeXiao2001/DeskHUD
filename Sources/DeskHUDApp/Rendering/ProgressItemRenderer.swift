@@ -17,9 +17,9 @@ private struct ProgressItemBody: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                HUDTypography.title(for: item)
+                HUDTypography.title(for: item, opacity: config.window.textOpacity)
                 Spacer(minLength: 8)
-                HUDTypography.optional(item.label, style: .secondary)
+                HUDTypography.optional(item.label, style: .secondary, opacity: config.window.textOpacity)
             }
             ProgressView(value: clamped)
                 .progressViewStyle(.linear)
