@@ -143,6 +143,17 @@ private struct BehaviorPane: View {
                         ), in: 2 ... 15, step: 1)
             }
 
+            LabeledContent("Watch Dir:") {
+                HStack(spacing: 4) {
+                    TextField("cloud sync path", text: Binding(
+                        get: { config.watchDirectory ?? "" },
+                        set: { config.watchDirectory = $0.isEmpty ? nil : $0 }
+                    ))
+                    .frame(minWidth: 180)
+                    Button("Choose...") { browseWatchDir() }
+                }
+            }
+
             Toggle("Calendar Events", isOn: $config.calendarEvents)
             Toggle("Launch at Login", isOn: $config.launchAtLogin)
             Toggle("Hide Menu Bar", isOn: $config.hideMenuBar)
