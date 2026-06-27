@@ -110,11 +110,23 @@ struct DeskHUDCTL {
         | `hud_leftDock.json` | Left | Scrolling agenda: tasks, schedule, reminders. AI organizes user input. |
         | `hud_rightDock.json` | Right | Context-aware tips & status. AI recommends what to do next. |
 
-        - The left panel scrolls through items. Items with `durationSeconds` stay
-          longer; short tasks can use the default (config.window.scrollIntervalSeconds).
+        - The left panel scrolls through items 2 at a time. Items with `durationSeconds`
+          stay longer; short items use the default (scrollIntervalSeconds, default 4s).
         - The right panel is relatively stable — update when context changes.
-        - AI should adapt content to the user's current project and time of day.
+        - AI should adapt content to the user's current project, time of day, and active repos.
         - Write atomically: write to .tmp, flush, rename to .json.
+
+        ## AI writing tips
+
+        - Use Unicode emoji in titles (🎯 📅 ✅ ⏰ 📄 💻 🚀 ⚠️) for visual cues.
+        - Every schedule/task item should have a `time` or `label` showing when.
+        - For progress bars with timelines, put the date range in `label`
+          (e.g. "2026-07-01 → 2026-08-15") and current progress in `value` (0–1).
+        - Use `durationSeconds` for important items that need more reading time.
+          Default is 4s; long text might need 8-12s; quick status needs 2-3s.
+        - Status items with `state` get colored dots (green/cyan/yellow/red).
+          Text items show clean title+subtitle without dots — use for info, not tasks.
+        - Keep content concise — the panel is small. Prefer short phrases over sentences.
 
         ## HUD Document (hud.json or full document)
         {

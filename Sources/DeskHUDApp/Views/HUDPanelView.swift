@@ -57,15 +57,11 @@ struct HUDPanelView: View {
         VStack(alignment: .leading, spacing: itemSpacing) {
             ForEach(visibleItems(from: section)) { item in
                 HUDItemView(item: item, config: config)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .move(edge: .top).combined(with: .opacity)
-                    ))
             }
             Spacer(minLength: 0)
         }
-        .animation(.easeInOut(duration: 0.35), value: scrollOffset)
-        .animation(.easeInOut(duration: 0.35), value: sectionIndex)
+        .animation(.easeInOut(duration: 0.3), value: scrollOffset)
+        .animation(.easeInOut(duration: 0.3), value: sectionIndex)
     }
 
     /// Returns up to `visibleCount` items starting at `scrollOffset`, wrapping around.
