@@ -370,7 +370,7 @@ final class HUDWindowManager {
         }()
         let titleOverhead: CGFloat = 16
         let available = config.window.height - pad * 2 - titleOverhead
-        let perItem: CGFloat = itemSpacing + 20
+        let perItem: CGFloat = itemSpacing + 22
         return max(1, Int(available / perItem))
     }
 

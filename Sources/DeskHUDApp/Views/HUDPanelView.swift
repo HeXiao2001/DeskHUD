@@ -87,7 +87,7 @@ struct HUDPanelView: View {
     private func maxVisibleItems() -> Int {
         let titleOverhead: CGFloat = (currentSection?.title?.isEmpty == false ? 16 : 0)
         let available = height - padding * 2 - titleOverhead
-        let perItem: CGFloat = itemSpacing + 18
+        let perItem: CGFloat = itemSpacing + 22
         return max(2, Int(available / perItem))
     }
 
