@@ -4,6 +4,8 @@ import SwiftUI
 struct HUDPanelView: View {
     let slot: HUDSlot
     let config: HUDConfig
+    let width: CGFloat
+    let height: CGFloat
 
     var body: some View {
         VStack(alignment: .leading, spacing: spacing) {
@@ -13,7 +15,7 @@ struct HUDPanelView: View {
             Spacer(minLength: 0)
         }
         .padding(padding)
-        .frame(width: config.window.width, height: config.window.height, alignment: .topLeading)
+        .frame(width: width, height: height, alignment: .topLeading)
         .background(panelBackground)
         .clipShape(RoundedRectangle(cornerRadius: config.window.cornerRadius, style: .continuous))
         .overlay(
