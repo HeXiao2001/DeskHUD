@@ -166,7 +166,7 @@ struct DeskHUDCTL {
           "displays": "all",               // all | main
           "backgroundStyle": "clear",      // glass | clear | dark
           "calendarEvents": false,         // bool: enable macOS Calendar?
-          "externalAgendaPath": null,      // string or null: path to external todo JSON
+          "watchDirectory": null,          // string or null: path to directory with config+hud JSONs
           "debugLogging": true,            // bool
           "window": {
             "width": 0,                    // 0 = auto-fill Dock-adjacent space

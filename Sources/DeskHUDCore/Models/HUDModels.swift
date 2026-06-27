@@ -8,7 +8,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
     public var backgroundStyle: BackgroundStyle
     public var window: HUDWindowConfig
     public var calendarEvents: Bool
-    public var externalAgendaPath: String?
+    public var watchDirectory: String?
     public var debugLogging: Bool
 
     public init(
@@ -18,7 +18,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         displays: DisplayMode = .all,
         backgroundStyle: BackgroundStyle = .clear,
         calendarEvents: Bool = false,
-        externalAgendaPath: String? = nil,
+        watchDirectory: String? = nil,
         window: HUDWindowConfig = HUDWindowConfig(),
         debugLogging: Bool = true
     ) {
@@ -28,7 +28,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         self.displays = displays
         self.backgroundStyle = backgroundStyle
         self.calendarEvents = calendarEvents
-        self.externalAgendaPath = externalAgendaPath
+        self.watchDirectory = watchDirectory
         self.window = window
         self.debugLogging = debugLogging
     }

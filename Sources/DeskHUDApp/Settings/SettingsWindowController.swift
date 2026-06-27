@@ -11,7 +11,7 @@ final class SettingsWindowController: NSWindowController {
         self.currentConfig = config
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 450, height: 370),
+            contentRect: NSRect(x: 0, y: 0, width: 450, height: 420),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -35,7 +35,7 @@ final class SettingsWindowController: NSWindowController {
             self?.onConfigChanged?(newConfig)
         }
         let hostingView = NSHostingView(rootView: view)
-        hostingView.frame.size = NSSize(width: 450, height: 370)
+        hostingView.frame.size = NSSize(width: 450, height: 420)
         return hostingView
     }
 

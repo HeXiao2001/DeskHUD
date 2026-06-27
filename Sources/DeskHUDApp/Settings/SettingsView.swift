@@ -134,6 +134,15 @@ private struct BehaviorPane: View {
                         ), in: 2 ... 15, step: 1)
             }
 
+            Toggle("Calendar Events", isOn: $config.calendarEvents)
+
+            LabeledContent("Watch Dir:") {
+                TextField("path or empty", text: Binding(
+                    get: { config.watchDirectory ?? "" },
+                    set: { config.watchDirectory = $0.isEmpty ? nil : $0 }
+                ))
+            }
+
             Toggle("Debug Logging", isOn: $config.debugLogging)
         }
     }

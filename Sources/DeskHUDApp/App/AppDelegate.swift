@@ -33,17 +33,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func renderInitialHUD() {
-        let configURL = resourceURL(named: "config", extension: "json")
-        let hudURL = resourceURL(named: "hud", extension: "json")
+        // If a watch directory is configured, load everything from there.
+        // Otherwise fall back to the bundled Examples/ directory.
+        let baseDir: URL? = {
+            if let dir = currentConfig.watchDirectory, !dir.isEmpty {
+                let expanded = (dir as NSString).expandingTildeInPath
+                let url = URL(fileURLWithPath: expanded)
+                guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+                return url
+            }
+            return nil
+        }()
+
+        let configURL = baseDir?.appendingPathComponent("config.json")
+            ?? resourceURL(named: "config", extension: "json")
+        let hudURL = baseDir?.appendingPathComponent("hud.json")
+            ?? resourceURL(named: "hud", extension: "json")
 
         currentConfig = configURL.flatMap { try? loader.loadConfig(from: $0).get() } ?? HUDConfig()
         var document = hudURL.flatMap { try? loader.loadHUD(from: $0).get() } ?? .empty
 
         // Merge per-slot content files (hud_leftDock.json, hud_rightDock.json, etc.)
-        // so independent writers don't conflict on the same file.
-        document = mergeSlotFiles(into: document)
+        document = mergeSlotFiles(into: document, baseDir: baseDir)
 
-        // Aggregate calendar + external sources into the left (agenda) slot.
+        // Aggregate calendar into the left (agenda) slot.
         document = mergeAgendaSources(into: document)
 
         currentDocument = document
@@ -53,11 +66,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// For each slot, if a file named `hud_{slot.id}.json` exists, load it and
     /// replace that slot's sections/items.  Slot files use the lightweight
     /// `HUDSlotContent` format — no need for the full HUDDocument envelope.
-    private func mergeSlotFiles(into document: HUDDocument) -> HUDDocument {
+    private func mergeSlotFiles(into document: HUDDocument, baseDir: URL?) -> HUDDocument {
         var doc = document
         for i in doc.slots.indices {
             let slot = doc.slots[i]
-            guard let slotURL = resourceURL(named: "hud_\(slot.id)", extension: "json"),
+            let slotURL: URL? = {
+                if let base = baseDir {
+                    let url = base.appendingPathComponent("hud_\(slot.id).json")
+                    return FileManager.default.fileExists(atPath: url.path) ? url : nil
+                }
+                return resourceURL(named: "hud_\(slot.id)", extension: "json")
+            }()
+            guard let slotURL,
                   case .success(let content) = loader.loadSlotContent(from: slotURL)
             else { continue }
             doc.slots[i].sections = content.sections
@@ -66,8 +86,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return doc
     }
 
-    /// Enrich the left (agenda) slot with calendar events, reminders, and
-    /// items from an external JSON file.  Right slot is left unchanged.
+    /// Enrich the left (agenda) slot with calendar events and reminders.
+    /// External file content is handled by `watchDirectory` — no separate path needed.
     private func mergeAgendaSources(into document: HUDDocument) -> HUDDocument {
         var doc = document
         guard let leftIndex = doc.slots.firstIndex(where: { $0.anchor == .dockLeft })
@@ -77,14 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Calendar
         if currentConfig.calendarEvents {
-            let calendarItems = CalendarReader.fetch()
-            items.append(contentsOf: calendarItems)
-        }
-
-        // External file
-        if let path = currentConfig.externalAgendaPath, !path.isEmpty {
-            let externalItems = ExternalAgendaReader.fetch(from: path)
-            items.append(contentsOf: externalItems)
+            items.append(contentsOf: CalendarReader.fetch())
         }
 
         // Sort: incomplete first (running > pending), then by time label

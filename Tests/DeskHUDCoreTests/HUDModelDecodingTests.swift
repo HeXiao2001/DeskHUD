@@ -29,7 +29,7 @@ final class HUDModelDecodingTests: XCTestCase {
           "displays": "all",
           "backgroundStyle": "glass",
           "calendarEvents": false,
-          "externalAgendaPath": null,
+          "watchDirectory": null,
           "debugLogging": false,
           "window": {
             "width": 320,

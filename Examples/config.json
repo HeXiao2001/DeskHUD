@@ -4,8 +4,8 @@
   "fullscreenMode": "overlay",
   "displays": "all",
   "backgroundStyle": "clear",
-  "calendarEvents": false,
-  "externalAgendaPath": null,
+  "calendarEvents": true,
+  "watchDirectory": "~/Library/CloudStorage/OneDrive-csu.edu.cn/Obsidian/HeX-Brain/00-System/DeskHUD",
   "debugLogging": true,
   "window": {
     "width": 0,
