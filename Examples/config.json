@@ -5,6 +5,8 @@
   "displays": "all",
   "backgroundStyle": "clear",
   "calendarEvents": true,
+  "launchAtLogin": false,
+  "hideMenuBar": false,
   "watchDirectory": "~/Library/CloudStorage/OneDrive-csu.edu.cn/Obsidian/HeX-Brain/00-System/DeskHUD",
   "debugLogging": true,
   "window": {
@@ -13,6 +15,8 @@
     "margin": 18,
     "cornerRadius": 14,
     "opacity": 0.84,
+    "fontSize": 13,
+    "textOpacity": 0.85,
     "maxLines": 1,
     "contentDensity": "comfortable",
     "scrollIntervalSeconds": 4
