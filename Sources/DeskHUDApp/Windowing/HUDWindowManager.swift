@@ -223,7 +223,7 @@ final class HUDWindowManager {
             return accessibilityRect.insetBy(dx: -10, dy: 0)
         }
 
-        let baseWidth = min(screenFrame.width * 0.64, max(620, screenFrame.width * 0.48))
+        let baseWidth = min(screenFrame.width * 0.78, max(820, screenFrame.width * 0.64))
         var minX = screenFrame.midX - baseWidth / 2
         var maxX = screenFrame.midX + baseWidth / 2
 
