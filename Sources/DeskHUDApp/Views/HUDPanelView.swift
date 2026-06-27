@@ -19,23 +19,20 @@ struct HUDPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Section title
             if let title = currentSection?.title, !title.isEmpty {
                 sectionTitle(title)
             }
-
-            // Items — clipped to panel height with animated transitions
             if let section = currentSection {
                 scrolledItems(section: section)
             }
         }
         .padding(padding)
         .frame(width: width, height: height, alignment: .topLeading)
+        .clipped()
         .background(panelBackground)
         .clipShape(RoundedRectangle(cornerRadius: config.window.cornerRadius, style: .continuous))
         .overlay(panelBorder)
         .shadow(color: textShadowColor, radius: textShadowRadius, x: 0, y: 1)
-        .clipped()
     }
 
     // MARK: - Section title
@@ -58,7 +55,6 @@ struct HUDPanelView: View {
             ForEach(visibleItems(from: section)) { item in
                 HUDItemView(item: item, config: config)
             }
-            Spacer(minLength: 0)
         }
         .id(scrollOffset)  // treat whole group as one unit for transitions
         .transition(.asymmetric(
