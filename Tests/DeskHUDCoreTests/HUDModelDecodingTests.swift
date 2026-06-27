@@ -27,6 +27,9 @@ final class HUDModelDecodingTests: XCTestCase {
           "effectProfile": "low",
           "fullscreenMode": "overlay",
           "displays": "all",
+          "backgroundStyle": "glass",
+          "calendarEvents": false,
+          "externalAgendaPath": null,
           "debugLogging": false,
           "window": {
             "width": 320,
@@ -35,7 +38,8 @@ final class HUDModelDecodingTests: XCTestCase {
             "cornerRadius": 14,
             "opacity": 0.84,
             "maxLines": 4,
-            "contentDensity": "comfortable"
+            "contentDensity": "comfortable",
+            "scrollIntervalSeconds": 4
           }
         }
         """#.data(using: .utf8)!

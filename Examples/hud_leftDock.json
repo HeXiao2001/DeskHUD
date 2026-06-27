@@ -1,0 +1,23 @@
+{
+  "sections": [
+    {
+      "id": "focus",
+      "title": "Focus",
+      "items": [
+        { "id": "focus-main", "type": "text", "kind": "today", "title": "DeskHUD", "subtitle": "Ship display core with AI writer support" }
+      ]
+    },
+    {
+      "id": "tasks",
+      "title": "Tasks",
+      "items": [
+        { "id": "t1", "type": "status", "kind": "todo", "title": "Schema for todo items",         "state": "done" },
+        { "id": "t2", "type": "status", "kind": "todo", "title": "Real-time progress display",   "state": "running" },
+        { "id": "t3", "type": "status", "kind": "todo", "title": "File watcher for live reload",  "state": "pending" },
+        { "id": "t4", "type": "status", "kind": "todo", "title": "Rotation polish",              "state": "pending" },
+        { "id": "t5", "type": "status", "kind": "todo", "title": "Liquid Glass blur tuning",      "state": "blocked" }
+      ]
+    }
+  ],
+  "items": []
+}

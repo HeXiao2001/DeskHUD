@@ -7,12 +7,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let windowManager = HUDWindowManager()
     private let loader = HUDFileLoader()
     private var statusItem: NSStatusItem?
+    private var currentConfig = HUDConfig()
+    private var currentDocument = HUDDocument.empty
+    private var settingsWindowController: SettingsWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         requestAccessibilityTrustIfNeeded()
+        registerRenderers()
         installMenuBarItem()
         renderInitialHUD()
+    }
+
+    private func registerRenderers() {
+        let registry = HUDItemRendererRegistry.shared
+        registry.register(TextItemRenderer())
+        registry.register(MetricItemRenderer())
+        registry.register(ProgressItemRenderer())
+        registry.register(ListItemRenderer())
+        registry.register(StatusItemRenderer())
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -23,9 +36,76 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let configURL = resourceURL(named: "config", extension: "json")
         let hudURL = resourceURL(named: "hud", extension: "json")
 
-        let config = configURL.flatMap { try? loader.loadConfig(from: $0).get() } ?? HUDConfig()
-        let document = hudURL.flatMap { try? loader.loadHUD(from: $0).get() } ?? .empty
-        windowManager.show(document: document, config: config)
+        currentConfig = configURL.flatMap { try? loader.loadConfig(from: $0).get() } ?? HUDConfig()
+        var document = hudURL.flatMap { try? loader.loadHUD(from: $0).get() } ?? .empty
+
+        // Merge per-slot content files (hud_leftDock.json, hud_rightDock.json, etc.)
+        // so independent writers don't conflict on the same file.
+        document = mergeSlotFiles(into: document)
+
+        // Aggregate calendar + external sources into the left (agenda) slot.
+        document = mergeAgendaSources(into: document)
+
+        currentDocument = document
+        applyConfigAndDocument()
+    }
+
+    /// For each slot, if a file named `hud_{slot.id}.json` exists, load it and
+    /// replace that slot's sections/items.  Slot files use the lightweight
+    /// `HUDSlotContent` format — no need for the full HUDDocument envelope.
+    private func mergeSlotFiles(into document: HUDDocument) -> HUDDocument {
+        var doc = document
+        for i in doc.slots.indices {
+            let slot = doc.slots[i]
+            guard let slotURL = resourceURL(named: "hud_\(slot.id)", extension: "json"),
+                  case .success(let content) = loader.loadSlotContent(from: slotURL)
+            else { continue }
+            doc.slots[i].sections = content.sections
+            doc.slots[i].items = content.items
+        }
+        return doc
+    }
+
+    /// Enrich the left (agenda) slot with calendar events, reminders, and
+    /// items from an external JSON file.  Right slot is left unchanged.
+    private func mergeAgendaSources(into document: HUDDocument) -> HUDDocument {
+        var doc = document
+        guard let leftIndex = doc.slots.firstIndex(where: { $0.anchor == .dockLeft })
+        else { return doc }
+
+        var items = doc.slots[leftIndex].resolvedSections.flatMap { $0.items }
+
+        // Calendar
+        if currentConfig.calendarEvents {
+            let calendarItems = CalendarReader.fetch()
+            items.append(contentsOf: calendarItems)
+        }
+
+        // External file
+        if let path = currentConfig.externalAgendaPath, !path.isEmpty {
+            let externalItems = ExternalAgendaReader.fetch(from: path)
+            items.append(contentsOf: externalItems)
+        }
+
+        // Sort: incomplete first (running > pending), then by time label
+        items.sort { a, b in
+            let order: [String] = ["running", "active", "working", "thinking", "pending", "todo", "done"]
+            let aIdx = order.firstIndex(of: a.state?.lowercased() ?? "") ?? order.count
+            let bIdx = order.firstIndex(of: b.state?.lowercased() ?? "") ?? order.count
+            if aIdx != bIdx { return aIdx < bIdx }
+            return (a.label ?? a.time ?? "") < (b.label ?? b.time ?? "")
+        }
+
+        doc.slots[leftIndex].sections = [
+            HUDSection(id: "agenda", title: "Agenda", items: items)
+        ]
+        doc.slots[leftIndex].items = items
+        return doc
+    }
+
+    private func applyConfigAndDocument() {
+        windowManager.show(document: currentDocument, config: currentConfig)
+        settingsWindowController?.updateConfig(currentConfig)
     }
 
     private func resourceURL(named name: String, extension fileExtension: String) -> URL? {
@@ -38,17 +118,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return FileManager.default.fileExists(atPath: fallback.path) ? fallback : nil
     }
 
+    // MARK: - Menu bar
+
     private func installMenuBarItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.title = "DeskHUD"
 
         let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: "Settings...",
+                                 action: #selector(openSettings),
+                                 keyEquivalent: ","))
+        menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Reload", action: #selector(reloadHUD), keyEquivalent: "r"))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
+
         item.menu = menu
         statusItem = item
     }
+
+    @objc private func openSettings() {
+        if settingsWindowController == nil {
+            settingsWindowController = SettingsWindowController(config: currentConfig)
+            settingsWindowController?.onConfigChanged = { [weak self] newConfig in
+                Task { @MainActor [weak self] in
+                    self?.currentConfig = newConfig
+                    self?.windowManager.reconfigure(config: newConfig)
+                }
+            }
+        }
+        settingsWindowController?.updateConfig(currentConfig)
+        settingsWindowController?.show()
+    }
+
+    // MARK: - Accessibility
 
     private func requestAccessibilityTrustIfNeeded() {
         guard !AXIsProcessTrusted() else { return }

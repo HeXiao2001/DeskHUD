@@ -4,47 +4,45 @@
     {
       "id": "leftDock",
       "anchor": "dock.left",
-      "rotation": { "enabled": false, "intervalSeconds": 45 },
-      "items": [
+      "rotation": { "enabled": true, "intervalSeconds": 30 },
+      "sections": [
         {
-          "id": "today-title",
-          "type": "text",
-          "kind": "today",
-          "title": "Today",
-          "subtitle": "Focus on parser and display core"
+          "id": "focus",
+          "title": "Focus",
+          "items": [
+            { "id": "focus-main", "type": "text", "kind": "today", "title": "DeskHUD", "subtitle": "Ship display core with AI writer support" }
+          ]
         },
         {
-          "id": "today-list",
-          "type": "list",
-          "kind": "todo",
-          "title": "Next",
-          "lines": ["Ship first HUD window", "Keep idle CPU near zero", "Verify full-screen behavior"]
+          "id": "tasks",
+          "title": "Tasks",
+          "items": [
+            { "id": "t1", "type": "status", "kind": "todo", "title": "Schema for todo items",         "state": "done" },
+            { "id": "t2", "type": "status", "kind": "todo", "title": "Real-time progress display",   "state": "running" },
+            { "id": "t3", "type": "status", "kind": "todo", "title": "File watcher for live reload",  "state": "pending" },
+            { "id": "t4", "type": "status", "kind": "todo", "title": "Rotation polish",              "state": "pending" },
+            { "id": "t5", "type": "status", "kind": "todo", "title": "Liquid Glass blur tuning",      "state": "blocked" }
+          ]
         }
-      ]
+      ],
+      "items": []
     },
     {
       "id": "rightDock",
       "anchor": "dock.right",
       "rotation": { "enabled": false, "intervalSeconds": 45 },
-      "items": [
+      "sections": [
         {
-          "id": "build-progress",
-          "type": "progress",
-          "kind": "aiProgress",
-          "title": "DeskHUD",
-          "label": "Display core",
-          "value": 0.35,
-          "state": "running"
-        },
-        {
-          "id": "status",
-          "type": "status",
-          "kind": "systemStatus",
-          "title": "Mode",
-          "label": "Read-only file driven",
-          "state": "ok"
+          "id": "live",
+          "title": "Live",
+          "items": [
+            { "id": "ai-progress", "type": "progress", "kind": "aiProgress", "title": "Claude Code", "label": "Building DeskHUD", "value": 0.64, "state": "running" },
+            { "id": "current-file", "type": "text", "kind": "focus", "title": "Editing", "subtitle": "HUDWindowManager.swift" },
+            { "id": "branch", "type": "status", "kind": "systemStatus", "title": "Branch", "label": "main", "state": "ok" }
+          ]
         }
-      ]
+      ],
+      "items": []
     }
   ]
 }

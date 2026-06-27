@@ -13,20 +13,49 @@ final class HUDWindowManager {
     }
 
     private var managedWindows: [ManagedWindow] = []
+    private var slotStates: [String: PerSlotState] = [:]  // keyed by slot.id
+    private var rotationTimer: Timer?
+    private var scrollTimer: Timer?
     private var mouseMonitor: Any?
     private var dockFollowTimer: Timer?
+    private var idleRefreshTimer: Timer?
+    private var activeConfig: HUDConfig?
+    private var activeDocument: HUDDocument?
     private var isMouseNearBottomDock = false
     private var lastMouseLocation: NSPoint = .zero
+    private var lastKnownDockRect: NSRect?
+    private var debugEnabled = false
+    private var workspaceObservers: [NSObjectProtocol] = []
+
+    private struct PerSlotState {
+        var sectionIndex = 0
+        var scrollOffset = 0
+    }
 
     func show(document: HUDDocument, config: HUDConfig) {
         closeAll()
+        debugEnabled = config.debugLogging
+        activeConfig = config
+        activeDocument = document
+
+        // Initialize per-slot state for rotation / scroll
+        slotStates.removeAll()
+        for slot in document.slots {
+            slotStates[slot.id] = PerSlotState()
+        }
 
         let screens = config.displays == .main ? [NSScreen.main].compactMap { $0 } : NSScreen.screens
         for screen in screens {
             for slot in document.slots {
                 guard slot.anchor == .dockLeft || slot.anchor == .dockRight else { continue }
+                let state = slotStates[slot.id] ?? PerSlotState()
                 let frame = frameForSlot(slot, on: screen, config: config, mouseLocation: nil)
-                let view = HUDPanelView(slot: slot, config: config, width: frame.width, height: frame.height)
+                let view = HUDPanelView(
+                    slot: slot, config: config,
+                    width: frame.width, height: frame.height,
+                    sectionIndex: state.sectionIndex,
+                    scrollOffset: state.scrollOffset
+                )
                 let hostingView = NSHostingView(rootView: view)
                 hostingView.frame = NSRect(origin: .zero, size: frame.size)
 
@@ -51,10 +80,51 @@ final class HUDWindowManager {
         }
 
         installMouseMonitor(config: config)
+        installIdleRefreshTimer()
+        installWorkspaceObservers()
+        installRotationTimer()
+        installScrollTimer()
+    }
+
+    /// Apply config changes to existing windows without tearing them down.
+    /// Used for live settings preview — no flicker, no timer restart.
+    func reconfigure(config: HUDConfig) {
+        activeConfig = config
+        debugEnabled = config.debugLogging
+        // Restart scroll timer with new interval
+        stopScrollTimer()
+        installScrollTimer()
+        for managedWindow in managedWindows {
+            let state = slotStates[managedWindow.slot.id] ?? PerSlotState()
+            let frame = frameForSlot(
+                managedWindow.slot,
+                on: managedWindow.screen,
+                config: config,
+                mouseLocation: nil
+            )
+            managedWindow.hostingView.rootView = HUDPanelView(
+                slot: managedWindow.slot,
+                config: config,
+                width: frame.width,
+                height: frame.height,
+                sectionIndex: state.sectionIndex,
+                scrollOffset: state.scrollOffset
+            )
+            managedWindow.hostingView.frame = NSRect(origin: .zero, size: frame.size)
+            managedWindow.window.setFrame(frame, display: true, animate: false)
+            managedWindow.window.collectionBehavior = collectionBehavior(for: config)
+        }
     }
 
     func closeAll() {
         stopDockFollowTimer()
+        stopIdleRefreshTimer()
+        stopRotationTimer()
+        stopScrollTimer()
+        for observer in workspaceObservers {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
+        workspaceObservers.removeAll()
         if let mouseMonitor {
             NSEvent.removeMonitor(mouseMonitor)
             self.mouseMonitor = nil
@@ -90,27 +160,36 @@ final class HUDWindowManager {
 
         isMouseNearBottomDock = shouldFollow
         if shouldFollow {
-            startDockFollowTimer(config: config)
+            stopIdleRefreshTimer()
+            startDockFollowTimer()
         } else {
             stopDockFollowTimer()
             updateFrames(config: config, mouseLocation: nil)
+            installIdleRefreshTimer()
         }
     }
 
-    private func startDockFollowTimer(config: HUDConfig) {
+    /// Runs at 60 Hz to match standard display refresh rate.
+    /// CADisplayLink is not available for standalone AppKit use on macOS, so a
+    /// Timer is the most portable approach.
+    private func startDockFollowTimer() {
         guard dockFollowTimer == nil else { return }
-        dockFollowTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 24.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                self.lastMouseLocation = NSEvent.mouseLocation
-                if self.isInBottomDockTrackingArea(self.lastMouseLocation) {
-                    self.updateFrames(config: config, mouseLocation: self.lastMouseLocation)
-                } else {
-                    self.isMouseNearBottomDock = false
-                    self.stopDockFollowTimer()
-                    self.updateFrames(config: config, mouseLocation: nil)
-                }
+        dockFollowTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.timerTick()
             }
+        }
+    }
+
+    private func timerTick() {
+        guard let config = activeConfig else { return }
+        lastMouseLocation = NSEvent.mouseLocation
+        if isInBottomDockTrackingArea(lastMouseLocation) {
+            updateFrames(config: config, mouseLocation: lastMouseLocation)
+        } else {
+            isMouseNearBottomDock = false
+            stopDockFollowTimer()
+            updateFrames(config: config, mouseLocation: nil)
         }
     }
 
@@ -119,15 +198,212 @@ final class HUDWindowManager {
         dockFollowTimer = nil
     }
 
+    // MARK: - Idle refresh (catches Dock width changes when mouse is away)
+
+    /// Checks the AX Dock rect every 2 seconds when the mouse is not near the Dock.
+    /// If the Dock width changed (user added/removed an app, etc.), the HUD panels
+    /// adjust automatically.
+    private func installIdleRefreshTimer() {
+        guard idleRefreshTimer == nil else { return }
+        idleRefreshTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.idleRefreshTick()
+            }
+        }
+    }
+
+    private func idleRefreshTick() {
+        guard !isMouseNearBottomDock,
+              let config = activeConfig else { return }
+        // Snapshot current AX Dock rect. If different from last known, HUDs need updating.
+        for screen in NSScreen.screens {
+            if let currentRect = accessibilityDockRect(in: screen.frame) {
+                if lastKnownDockRect != currentRect {
+                    lastKnownDockRect = currentRect
+                    updateFrames(config: config, mouseLocation: nil)
+                    logDebug("idleRefresh dockChanged rect=\(currentRect.debugDescription)")
+                }
+                return
+            }
+        }
+    }
+
+    private func stopIdleRefreshTimer() {
+        idleRefreshTimer?.invalidate()
+        idleRefreshTimer = nil
+    }
+
+    // MARK: - Rotation timer (cycles between sections per slot)
+
+    private func installRotationTimer() {
+        guard activeConfig != nil, let document = activeDocument else { return }
+        let anyRotationEnabled = document.slots.contains { $0.rotation.enabled }
+        guard anyRotationEnabled else { return }
+        stopRotationTimer()
+
+        // Find the minimum rotation interval across all slots
+        let minInterval = document.slots
+            .filter { $0.rotation.enabled }
+            .map { $0.rotation.intervalSeconds }
+            .min() ?? 45
+
+        rotationTimer = Timer.scheduledTimer(withTimeInterval: minInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.rotationTick()
+            }
+        }
+    }
+
+    private func rotationTick() {
+        guard let document = activeDocument, let config = activeConfig else { return }
+        var changed = false
+        for slot in document.slots where slot.rotation.enabled {
+            let sections = slot.resolvedSections
+            guard sections.count > 1 else { continue }
+            var state = slotStates[slot.id] ?? PerSlotState()
+            state.sectionIndex = (state.sectionIndex + 1) % sections.count
+            state.scrollOffset = 0
+            slotStates[slot.id] = state
+            changed = true
+        }
+        if changed { refreshManagedWindows(config: config) }
+    }
+
+    private func stopRotationTimer() {
+        rotationTimer?.invalidate()
+        rotationTimer = nil
+    }
+
+    // MARK: - Scroll timer (auto-scrolls items within each section)
+
+    private func installScrollTimer() {
+        guard scrollTimer == nil, let config = activeConfig else { return }
+        let interval = config.window.scrollIntervalSeconds
+        scrollTimer?.invalidate()
+        scrollTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.scrollTick()
+            }
+        }
+    }
+
+    private func scrollTick() {
+        guard let document = activeDocument, let config = activeConfig else { return }
+        var changed = false
+        for slot in document.slots {
+            let sections = slot.resolvedSections
+            guard !sections.isEmpty else { continue }
+            var state = slotStates[slot.id] ?? PerSlotState()
+            guard state.sectionIndex < sections.count else { continue }
+            let section = sections[state.sectionIndex]
+            let count = section.items.count
+            guard count > 0 else { continue }
+            // Advance one visible page at a time
+            let visible = maxVisibleItemCount()
+            state.scrollOffset = (state.scrollOffset + max(1, visible - 1)) % max(1, count)
+            slotStates[slot.id] = state
+            changed = true
+        }
+        if changed { refreshManagedWindows(config: config) }
+    }
+
+    private func stopScrollTimer() {
+        scrollTimer?.invalidate()
+        scrollTimer = nil
+    }
+
+    /// Estimate visible items (same logic as HUDPanelView).
+    private func maxVisibleItemCount() -> Int {
+        guard let config = activeConfig else { return 2 }
+        let pad: CGFloat = {
+            switch config.window.contentDensity {
+            case .compact: 10; case .comfortable: 12; case .spacious: 16
+            }
+        }()
+        let itemSpacing: CGFloat = {
+            switch config.window.contentDensity {
+            case .compact: 5; case .comfortable: 7; case .spacious: 9
+            }
+        }()
+        let titleOverhead: CGFloat = 16
+        let available = config.window.height - pad * 2 - titleOverhead
+        let perItem: CGFloat = itemSpacing + 20
+        return max(1, Int(available / perItem))
+    }
+
+    /// Push current slot state to every displayed window.
+    /// Uses the current mouse location when the mouse is near the Dock so
+    /// the frame accounts for Dock magnification.
+    private func refreshManagedWindows(config: HUDConfig) {
+        let mouse: NSPoint? = isMouseNearBottomDock ? lastMouseLocation : nil
+        for managedWindow in managedWindows {
+            let state = slotStates[managedWindow.slot.id] ?? PerSlotState()
+            let frame = frameForSlot(
+                managedWindow.slot,
+                on: managedWindow.screen,
+                config: config,
+                mouseLocation: mouse
+            )
+            managedWindow.window.setFrame(frame, display: true, animate: false)
+            managedWindow.hostingView.rootView = HUDPanelView(
+                slot: managedWindow.slot,
+                config: config,
+                width: frame.width,
+                height: frame.height,
+                sectionIndex: state.sectionIndex,
+                scrollOffset: state.scrollOffset
+            )
+            managedWindow.hostingView.frame = NSRect(origin: .zero, size: frame.size)
+        }
+    }
+
+    // MARK: - Workspace events (triggers immediate Dock width re-check)
+
+    private func installWorkspaceObservers() {
+        let launched = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didLaunchApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.dockMayHaveChanged()
+            }
+        }
+        let terminated = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.dockMayHaveChanged()
+            }
+        }
+        workspaceObservers = [launched, terminated]
+    }
+
+    private func dockMayHaveChanged() {
+        guard activeConfig != nil, !isMouseNearBottomDock else { return }
+        // Invalidate cached rect so the next idle tick (or immediate check) picks up the change.
+        lastKnownDockRect = nil
+        // Immediate single check after a short debounce (the Dock animates its size change).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            guard let self, self.activeConfig != nil, !self.isMouseNearBottomDock else { return }
+            self.idleRefreshTick()
+        }
+    }
+
     private func updateFrames(config: HUDConfig, mouseLocation: NSPoint?) {
         for managedWindow in managedWindows {
+            let state = slotStates[managedWindow.slot.id] ?? PerSlotState()
             let frame = frameForSlot(managedWindow.slot, on: managedWindow.screen, config: config, mouseLocation: mouseLocation)
             guard !managedWindow.window.frame.equalTo(frame) else { continue }
             managedWindow.hostingView.rootView = HUDPanelView(
                 slot: managedWindow.slot,
                 config: config,
                 width: frame.width,
-                height: frame.height
+                height: frame.height,
+                sectionIndex: state.sectionIndex,
+                scrollOffset: state.scrollOffset
             )
             managedWindow.hostingView.frame = NSRect(origin: .zero, size: frame.size)
             managedWindow.window.setFrame(frame, display: true, animate: false)
@@ -195,7 +471,7 @@ final class HUDWindowManager {
             dockBandHeight: dockBandHeight,
             mouseLocation: mouseLocation
         )
-        let gap: CGFloat = 12
+        let gap: CGFloat = 6
         let minWidth: CGFloat = 150
         let height = min(preferredSize.height, max(54, dockBandHeight - 10))
         let y = screenFrame.minY + max(5, (dockBandHeight - height) / 2)
@@ -203,12 +479,14 @@ final class HUDWindowManager {
         switch slot.anchor {
         case .dockLeft:
             let leftAvailable = max(0, dockExclusion.minX - screenFrame.minX - margin - gap)
-            let width = min(preferredSize.width, max(minWidth, leftAvailable))
+            let maxWidth = preferredSize.width > 0 ? preferredSize.width : .greatestFiniteMagnitude
+            let width = min(maxWidth, max(minWidth, leftAvailable))
             let x = screenFrame.minX + margin
             return NSRect(x: x.rounded(), y: y.rounded(), width: width.rounded(), height: height.rounded())
         case .dockRight:
             let rightAvailable = max(0, screenFrame.maxX - dockExclusion.maxX - margin - gap)
-            let width = min(preferredSize.width, max(minWidth, rightAvailable))
+            let maxWidth = preferredSize.width > 0 ? preferredSize.width : .greatestFiniteMagnitude
+            let width = min(maxWidth, max(minWidth, rightAvailable))
             let x = screenFrame.maxX - margin - width
             return NSRect(x: x.rounded(), y: y.rounded(), width: width.rounded(), height: height.rounded())
         }
@@ -219,13 +497,17 @@ final class HUDWindowManager {
         dockBandHeight: CGFloat,
         mouseLocation: NSPoint?
     ) -> NSRect {
+        // Preferred: use Accessibility API for exact Dock bounds
         if let accessibilityRect = accessibilityDockRect(in: screenFrame) {
-            return accessibilityRect.insetBy(dx: -10, dy: 0)
+            logDebug("dockSource=AX rect=\(accessibilityRect.debugDescription)")
+            // Minimal expansion for Dock visual edge padding
+            return accessibilityRect.insetBy(dx: -4, dy: 0)
         }
 
-        let baseWidth = min(screenFrame.width * 0.78, max(820, screenFrame.width * 0.64))
-        var minX = screenFrame.midX - baseWidth / 2
-        var maxX = screenFrame.midX + baseWidth / 2
+        // Fallback: estimate Dock width from preferences + conservative heuristic
+        let estimatedWidth = estimateDockWidthFromPreferences(screenWidth: screenFrame.width)
+        var minX = screenFrame.midX - estimatedWidth / 2
+        var maxX = screenFrame.midX + estimatedWidth / 2
 
         if let mouseLocation, screenFrame.contains(mouseLocation) {
             let magnifiedRadius = max(210, dockBandHeight * 2.4)
@@ -235,7 +517,27 @@ final class HUDWindowManager {
 
         minX = max(screenFrame.minX, minX)
         maxX = min(screenFrame.maxX, maxX)
-        return NSRect(x: minX, y: screenFrame.minY, width: max(0, maxX - minX), height: dockBandHeight)
+        let rect = NSRect(x: minX, y: screenFrame.minY, width: max(0, maxX - minX), height: dockBandHeight)
+        logDebug("dockSource=prefs rect=\(rect.debugDescription)")
+        return rect
+    }
+
+    /// Estimate Dock width from `com.apple.dock` preferences.
+    /// Biases conservative (wider estimate) to avoid HUD panels overlapping the Dock.
+    private func estimateDockWidthFromPreferences(screenWidth: CGFloat) -> CGFloat {
+        let dockDefaults = UserDefaults(suiteName: "com.apple.dock")
+        let tileSize = CGFloat(dockDefaults?.double(forKey: "tilesize") ?? 64)
+        let persistentAppCount = dockDefaults?.array(forKey: "persistent-apps")?.count ?? 0
+        let persistentOtherCount = dockDefaults?.array(forKey: "persistent-others")?.count ?? 0
+
+        // Always-visible Dock fixtures (Finder, Trash) + generous running-app buffer
+        let estimatedIcons = max(persistentAppCount + persistentOtherCount + 10, 12)
+        let spacingPerIcon: CGFloat = 10
+        let rawWidth = tileSize * CGFloat(estimatedIcons) + spacingPerIcon * CGFloat(estimatedIcons - 1)
+
+        // Clamp: never narrower than 50% or wider than 92% of screen width
+        let clamped = min(screenWidth * 0.92, max(screenWidth * 0.50, rawWidth))
+        return clamped.rounded()
     }
 
     private func accessibilityDockRect(in screenFrame: NSRect) -> NSRect? {
@@ -322,20 +624,37 @@ final class HUDWindowManager {
         )
     }
 
+    private func logDebug(_ message: String) {
+        guard debugEnabled else { return }
+        let line = "\(Date()) \(message)\n"
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("DeskHUDDockDebug.log")
+        if let data = line.data(using: .utf8) {
+            if FileManager.default.fileExists(atPath: url.path),
+               let handle = try? FileHandle(forWritingTo: url) {
+                _ = try? handle.seekToEnd()
+                _ = try? handle.write(contentsOf: data)
+                _ = try? handle.close()
+            } else {
+                _ = try? data.write(to: url)
+            }
+        }
+    }
+
     private func frameForSideDockSlot(
         _ slot: HUDSlot,
         visible: NSRect,
         preferredSize: NSSize,
         margin: CGFloat
     ) -> NSRect {
+        let effectiveWidth = preferredSize.width > 0 ? preferredSize.width : (visible.width - margin * 2)
         let x: CGFloat
         switch slot.anchor {
         case .dockLeft:
             x = visible.minX + margin
         case .dockRight:
-            x = visible.maxX - margin - preferredSize.width
+            x = visible.maxX - margin - effectiveWidth
         }
         let y = visible.minY + margin
-        return NSRect(x: x.rounded(), y: y.rounded(), width: preferredSize.width, height: preferredSize.height)
+        return NSRect(x: x.rounded(), y: y.rounded(), width: effectiveWidth, height: preferredSize.height)
     }
 }

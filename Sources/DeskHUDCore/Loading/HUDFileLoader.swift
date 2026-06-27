@@ -32,6 +32,10 @@ public struct HUDFileLoader: Sendable {
         decode(HUDDocument.self, from: url)
     }
 
+    public func loadSlotContent(from url: URL) -> Result<HUDSlotContent, HUDFileLoaderError> {
+        decode(HUDSlotContent.self, from: url)
+    }
+
     public func decode<T: Decodable>(_ type: T.Type, from url: URL) -> Result<T, HUDFileLoaderError> {
         guard FileManager.default.fileExists(atPath: url.path) else {
             return .failure(.fileNotFound(url.path))

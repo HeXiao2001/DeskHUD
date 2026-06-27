@@ -1,28 +1,96 @@
 import DeskHUDCore
 import SwiftUI
 
+// MARK: - Panel
+
 struct HUDPanelView: View {
     let slot: HUDSlot
     let config: HUDConfig
     let width: CGFloat
     let height: CGFloat
+    let sectionIndex: Int
+    let scrollOffset: Int
+
+    private var currentSection: HUDSection? {
+        let sections = slot.resolvedSections
+        guard sectionIndex < sections.count else { return nil }
+        return sections[sectionIndex]
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: spacing) {
-            ForEach(slot.items.prefix(3)) { item in
-                HUDItemView(item: item, config: config)
+        VStack(alignment: .leading, spacing: 0) {
+            // Section title
+            if let title = currentSection?.title, !title.isEmpty {
+                sectionTitle(title)
             }
-            Spacer(minLength: 0)
+
+            // Items — clipped to panel height with animated transitions
+            if let section = currentSection {
+                scrolledItems(section: section)
+            }
         }
         .padding(padding)
         .frame(width: width, height: height, alignment: .topLeading)
         .background(panelBackground)
         .clipShape(RoundedRectangle(cornerRadius: config.window.cornerRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: config.window.cornerRadius, style: .continuous)
-                .stroke(Color.white.opacity(0.10), lineWidth: 1)
-        )
+        .overlay(panelBorder)
+        .shadow(color: textShadowColor, radius: textShadowRadius, x: 0, y: 1)
+        .clipped()
     }
+
+    // MARK: - Section title
+
+    private func sectionTitle(_ text: String) -> some View {
+        HStack(spacing: 0) {
+            Text(text)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.45))
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(.bottom, 4)
+    }
+
+    // MARK: - Scrolled items
+
+    private func scrolledItems(section: HUDSection) -> some View {
+        VStack(alignment: .leading, spacing: itemSpacing) {
+            ForEach(visibleItems(from: section)) { item in
+                HUDItemView(item: item, config: config)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .move(edge: .top).combined(with: .opacity)
+                    ))
+            }
+            Spacer(minLength: 0)
+        }
+        .animation(.easeInOut(duration: 0.35), value: scrollOffset)
+        .animation(.easeInOut(duration: 0.35), value: sectionIndex)
+    }
+
+    /// Returns up to `visibleCount` items starting at `scrollOffset`, wrapping around.
+    private func visibleItems(from section: HUDSection) -> [HUDItem] {
+        guard !section.items.isEmpty else { return [] }
+        let count = section.items.count
+        let maxVisible = maxVisibleItems()
+        var result: [HUDItem] = []
+        for i in 0 ..< maxVisible {
+            let idx = (scrollOffset + i) % count
+            result.append(section.items[idx])
+        }
+        return result
+    }
+
+    /// Estimate how many items fit in the remaining panel height.
+    private func maxVisibleItems() -> Int {
+        // Conservative: each item row ≈ 22pt, section title ≈ 16pt with padding
+        let titleOverhead: CGFloat = (currentSection?.title?.isEmpty == false ? 16 : 0)
+        let available = height - padding * 2 - titleOverhead
+        let perItem: CGFloat = itemSpacing + 20  // 20pt ≈ two lines of 11pt text
+        return max(1, Int(available / perItem))
+    }
+
+    // MARK: - Shared styling
 
     private var padding: CGFloat {
         switch config.window.contentDensity {
@@ -32,142 +100,54 @@ struct HUDPanelView: View {
         }
     }
 
-    private var spacing: CGFloat {
+    private var itemSpacing: CGFloat {
         switch config.window.contentDensity {
-        case .compact: 6
-        case .comfortable: 8
-        case .spacious: 10
+        case .compact: 5
+        case .comfortable: 7
+        case .spacious: 9
         }
     }
 
+    private var textShadowColor: Color {
+        config.backgroundStyle == .clear ? .black.opacity(0.45) : .clear
+    }
+
+    private var textShadowRadius: CGFloat {
+        config.backgroundStyle == .clear ? 3 : 0
+    }
+
+    @ViewBuilder
     private var panelBackground: some View {
-        ZStack {
+        switch config.backgroundStyle {
+        case .glass:
+            Color.clear.background(.ultraThinMaterial)
+        case .clear:
+            Color.clear
+        case .dark:
             Color.black.opacity(config.window.opacity)
-            if config.effectProfile != .low {
-                LinearGradient(
-                    colors: [Color.white.opacity(0.10), Color.cyan.opacity(0.08), Color.clear],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            }
+        }
+    }
+
+    @ViewBuilder
+    private var panelBorder: some View {
+        if config.backgroundStyle != .clear {
+            RoundedRectangle(cornerRadius: config.window.cornerRadius, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
         }
     }
 }
+
+// MARK: - Item dispatch
 
 private struct HUDItemView: View {
     let item: HUDItem
     let config: HUDConfig
 
     var body: some View {
-        switch item.type {
-        case .text:
-            textBlock
-        case .metric:
-            metricBlock
-        case .progress:
-            progressBlock
-        case .list:
-            listBlock
-        case .status:
-            statusBlock
+        if let renderer = HUDItemRendererRegistry.shared.renderer(for: item.type) {
+            renderer.body(for: item, config: config)
+        } else if let fallback = HUDItemRendererRegistry.shared.defaultRenderer {
+            fallback.body(for: item, config: config)
         }
     }
-
-    private var textBlock: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            title
-            optionalText(item.subtitle, style: .secondary)
-        }
-    }
-
-    private var metricBlock: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            title
-            if let value = item.value {
-                Text(value, format: .number.precision(.fractionLength(0...1)))
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                optionalText(item.unit, style: .secondary)
-            }
-        }
-    }
-
-    private var progressBlock: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                title
-                Spacer(minLength: 8)
-                optionalText(item.label, style: .secondary)
-            }
-            ProgressView(value: clampedProgress)
-                .progressViewStyle(.linear)
-                .tint(progressTint)
-        }
-    }
-
-    private var listBlock: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            title
-            ForEach(Array((item.lines ?? []).prefix(config.window.maxLines).enumerated()), id: \.offset) { _, line in
-                Text(line)
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.74))
-                    .lineLimit(1)
-            }
-        }
-    }
-
-    private var statusBlock: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(statusColor)
-                .frame(width: 7, height: 7)
-            title
-            optionalText(item.label, style: .secondary)
-        }
-    }
-
-    private var title: some View {
-        Text(item.title ?? item.kind ?? item.id)
-            .font(.system(size: 13, weight: .semibold, design: .rounded))
-            .foregroundStyle(.white)
-            .lineLimit(1)
-    }
-
-    @ViewBuilder
-    private func optionalText(_ text: String?, style: TextStyle) -> some View {
-        if let text, !text.isEmpty {
-            Text(text)
-                .font(.system(size: style == .secondary ? 11 : 12, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(style == .secondary ? 0.62 : 0.76))
-                .lineLimit(1)
-        }
-    }
-
-    private var clampedProgress: Double {
-        min(max(item.value ?? 0, 0), 1)
-    }
-
-    private var progressTint: Color {
-        switch config.effectProfile {
-        case .low: .white.opacity(0.82)
-        case .medium: .cyan
-        case .high: .mint
-        }
-    }
-
-    private var statusColor: Color {
-        switch item.state?.lowercased() {
-        case "ok", "ready", "done": .green
-        case "running", "active", "working": .cyan
-        case "warning", "blocked": .yellow
-        case "error", "failed": .red
-        default: .white.opacity(0.7)
-        }
-    }
-}
-
-private enum TextStyle {
-    case primary
-    case secondary
 }

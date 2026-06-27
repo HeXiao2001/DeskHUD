@@ -2,3 +2,5 @@
 dist/
 .DS_Store
 *.xcuserdata/
+script/certs/
+script/DeskHUD.iconset/

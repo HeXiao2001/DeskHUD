@@ -1,0 +1,47 @@
+import DeskHUDCore
+import SwiftUI
+
+/// Shared typography and color primitives used by HUD item renderers.
+enum HUDTypography {
+    enum TextStyle {
+        case primary
+        case secondary
+    }
+
+    static func title(for item: HUDItem) -> some View {
+        Text(item.title ?? item.kind ?? item.id)
+            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+    }
+
+    @ViewBuilder
+    static func optional(_ text: String?, style: TextStyle) -> some View {
+        if let text, !text.isEmpty {
+            Text(text)
+                .font(.system(size: style == .secondary ? 11 : 12,
+                              weight: .regular, design: .rounded))
+                .foregroundStyle(.white.opacity(style == .secondary ? 0.62 : 0.76))
+                .lineLimit(1)
+        }
+    }
+
+    static func statusColor(for state: String?) -> Color {
+        switch state?.lowercased() {
+        case "ok", "ready", "done":    .green
+        case "running", "active", "working", "thinking": .cyan
+        case "warning", "blocked":     .yellow
+        case "error", "failed":        .red
+        case "idle", "pending", "todo": .white.opacity(0.35)
+        default:                        .white.opacity(0.7)
+        }
+    }
+
+    static func progressTint(for profile: EffectProfile) -> Color {
+        switch profile {
+        case .low: .white.opacity(0.82)
+        case .medium: .cyan
+        case .high: .mint
+        }
+    }
+}

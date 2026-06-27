@@ -11,13 +11,20 @@ struct DeskHUDCTL {
         }
 
         switch command {
+        case "help", "-h", "--help":
+            printUsage()
+        case "schema":
+            printSchema()
         case "sample":
             sample(Array(args.dropFirst()))
+        case "slot":
+            print(Self.slotSample)
         case "validate":
             validate(Array(args.dropFirst()))
         case "status":
             print("DeskHUD CLI ready. App IPC status is not implemented in this MVP.")
         default:
+            fputs("Unknown command: \(command)\n", stderr)
             printUsage()
             Foundation.exit(2)
         }
@@ -26,10 +33,16 @@ struct DeskHUDCTL {
     private static func sample(_ args: [String]) {
         let name = args.first ?? "minimal"
         switch name {
-        case "minimal", "today", "todo", "meeting", "ai-progress", "goal":
-            print(Self.minimalHUDSample)
+        case "minimal":
+            print(Self.minimalSample)
+        case "todo":
+            print(Self.todoSample)
+        case "live":
+            print(Self.liveSample)
+        case "full":
+            print(Self.fullSample)
         default:
-            fputs("Unknown sample: \(name)\n", stderr)
+            fputs("Unknown sample: \(name). Try: minimal, todo, live, full\n", stderr)
             Foundation.exit(2)
         }
     }
@@ -66,35 +79,239 @@ struct DeskHUDCTL {
 
     private static func printUsage() {
         print("""
-        Usage:
-          deskhudctl sample minimal
-          deskhudctl validate hud <path>
-          deskhudctl validate config <path>
-          deskhudctl status
+        DeskHUD CLI — validate, generate, and inspect HUD configuration.
+
+        Commands:
+          deskhudctl schema                  Print complete JSON field reference
+          deskhudctl sample <name>           Output a ready-to-use HUD JSON template
+            names: minimal  todo  live  full
+          deskhudctl slot                    Output per-slot content template
+          deskhudctl validate hud <path>     Validate a HUD content file
+          deskhudctl validate config <path>  Validate a config file
+          deskhudctl status                  Show app status
+
+        Examples:
+          deskhudctl schema                  # AI: read this to learn the format
+          deskhudctl sample todo > hud_leftDock.json
+          deskhudctl sample live > hud_rightDock.json
+          deskhudctl validate hud hud_leftDock.json
         """)
     }
 
-    private static let minimalHUDSample = """
+    private static func printSchema() {
+        print("""
+        # DeskHUD File Format Reference
+
+        ## HUD Document (hud.json or full document)
+        {
+          "version": 1,
+          "slots": [
+            {
+              "id": "leftDock",              // required: "leftDock" or "rightDock"
+              "anchor": "dock.left",         // required: "dock.left" or "dock.right"
+              "rotation": {                  // optional
+                "enabled": false,            //   bool, cycle through sections?
+                "intervalSeconds": 45        //   seconds between rotations
+              },
+              "sections": [ ... ],           // preferred: array of HUDSection
+              "items": [ ... ]               // legacy flat items (used if sections is empty)
+            }
+          ]
+        }
+
+        ## Per-slot content file (hud_leftDock.json, hud_rightDock.json)
+        {
+          "sections": [ ... ],
+          "items": [ ... ]
+        }
+
+        ## HUD Section
+        {
+          "id": "tasks",           // required, unique within slot
+          "title": "Tasks",        // optional section header
+          "items": [ ... ]         // array of HUDItem
+        }
+
+        ## HUD Item — all fields
+        {
+          "id": "t1",              // required, unique identifier
+          "type": "status",        // required: text | metric | progress | list | status
+          "kind": "todo",          // optional semantic hint: todo, event, today, focus,
+                                   //   goal, aiProgress, systemStatus
+          "title": "Fix parser",   // primary text
+          "subtitle": "Handle partial writes",  // secondary text (text type)
+          "label": "14:00",        // auxiliary label (progress, status, event time)
+          "value": 0.62,           // number 0–1 progress, or arbitrary metric value
+          "unit": "%",             // unit string (metric type)
+          "state": "running",      // drives status dot color:
+                                   //   done/ok/ready=green   running/thinking/working=cyan
+                                   //   blocked/warning=yellow   error/failed=red
+                                   //   pending/todo/idle=dim
+          "time": "14:32",         // free-form time / duration label
+          "lines": ["line 1", "line 2"]  // multi-line text (list type)
+        }
+
+        ## Item types and which fields each uses
+        type=text     uses: title, subtitle, (time)
+        type=metric   uses: title, value, unit
+        type=progress uses: title, label, value (0–1), state
+        type=list     uses: title, lines[]
+        type=status   uses: title, label, state
+
+        ## Config file (config.json) — all fields
+        {
+          "version": 1,
+          "effectProfile": "low",          // low | medium | high
+          "fullscreenMode": "overlay",     // overlay | desktopOnly
+          "displays": "all",               // all | main
+          "backgroundStyle": "clear",      // glass | clear | dark
+          "calendarEvents": false,         // bool: enable macOS Calendar?
+          "externalAgendaPath": null,      // string or null: path to external todo JSON
+          "debugLogging": true,            // bool
+          "window": {
+            "width": 0,                    // 0 = auto-fill Dock-adjacent space
+            "height": 82,
+            "margin": 18,
+            "cornerRadius": 14,
+            "opacity": 0.84,              // used only when backgroundStyle=dark
+            "maxLines": 2,                // max lines in list items
+            "contentDensity": "comfortable", // compact | comfortable | spacious
+            "scrollIntervalSeconds": 4     // seconds between auto-scroll pages
+          }
+        }
+
+        ## Atomic write pattern (recommended)
+        Write to a .tmp file, flush, then rename:
+          echo '{"items":[...]}' > hud_leftDock.json.tmp && mv hud_leftDock.json.tmp hud_leftDock.json
+        """)
+    }
+
+    private static let minimalSample = """
     {
       "version": 1,
       "slots": [
         {
-          "id": "leftDock",
-          "anchor": "dock.left",
+          "id": "leftDock", "anchor": "dock.left",
           "rotation": { "enabled": false, "intervalSeconds": 45 },
           "items": [
-            { "id": "focus", "type": "text", "kind": "today", "title": "Focus", "subtitle": "Ship the display core" }
+            { "id": "f1", "type": "text", "kind": "today", "title": "Focus", "subtitle": "Ship it" }
           ]
         },
         {
-          "id": "rightDock",
-          "anchor": "dock.right",
+          "id": "rightDock", "anchor": "dock.right",
           "rotation": { "enabled": false, "intervalSeconds": 45 },
           "items": [
-            { "id": "progress", "type": "progress", "kind": "aiProgress", "title": "DeskHUD", "label": "MVP", "value": 0.35, "state": "running" }
+            { "id": "p1", "type": "progress", "kind": "aiProgress", "title": "Build", "label": "working", "value": 0.45, "state": "running" }
           ]
         }
       ]
+    }
+    """
+
+    /// A todo / task list.  Writers add or update items; each `state` drives the status dot:
+    ///   "done" = green, "running" = cyan, "blocked" = yellow, "pending" = dim white.
+    private static let todoSample = """
+    {
+      "version": 1,
+      "slots": [
+        {
+          "id": "leftDock", "anchor": "dock.left",
+          "rotation": { "enabled": true, "intervalSeconds": 30 },
+          "sections": [
+            {
+              "id": "tasks", "title": "Tasks",
+              "items": [
+                { "id": "t1", "type": "status", "kind": "todo", "title": "Design schema",       "state": "done" },
+                { "id": "t2", "type": "status", "kind": "todo", "title": "Implement renderer",    "state": "running" },
+                { "id": "t3", "type": "status", "kind": "todo", "title": "Write tests",           "state": "pending" },
+                { "id": "t4", "type": "status", "kind": "todo", "title": "Polish UI",             "state": "pending" }
+              ]
+            }
+          ],
+          "items": []
+        }
+      ]
+    }
+    """
+
+    /// Real-time status for AI / tool writers.  One section with progress, tool, branch + time.
+    private static let liveSample = """
+    {
+      "version": 1,
+      "slots": [
+        {
+          "id": "rightDock", "anchor": "dock.right",
+          "rotation": { "enabled": false, "intervalSeconds": 45 },
+          "sections": [
+            {
+              "id": "live", "title": "Live",
+              "items": [
+                { "id": "p1", "type": "progress", "kind": "aiProgress", "title": "Claude Code", "label": "Building", "value": 0.62, "state": "thinking" },
+                { "id": "f1", "type": "text",    "kind": "focus",     "title": "Tool", "subtitle": "Edit", "time": "14:32" },
+                { "id": "s1", "type": "status",  "kind": "systemStatus", "title": "Branch", "label": "main", "state": "ok" }
+              ]
+            }
+          ],
+          "items": []
+        }
+      ]
+    }
+    """
+
+    /// Both sides populated — tasks on the left, live AI status on the right.
+    private static let fullSample = """
+    {
+      "version": 1,
+      "slots": [
+        {
+          "id": "leftDock", "anchor": "dock.left",
+          "rotation": { "enabled": true, "intervalSeconds": 30 },
+          "sections": [
+            {
+              "id": "tasks", "title": "Tasks",
+              "items": [
+                { "id": "t1", "type": "status", "kind": "todo", "title": "Schema for todos",     "state": "done" },
+                { "id": "t2", "type": "status", "kind": "todo", "title": "Real-time progress",   "state": "running" },
+                { "id": "t3", "type": "status", "kind": "todo", "title": "File watcher",          "state": "pending" }
+              ]
+            }
+          ],
+          "items": []
+        },
+        {
+          "id": "rightDock", "anchor": "dock.right",
+          "rotation": { "enabled": false, "intervalSeconds": 45 },
+          "sections": [
+            {
+              "id": "live", "title": "Live",
+              "items": [
+                { "id": "p1", "type": "progress", "kind": "aiProgress", "title": "Claude Code", "label": "Building", "value": 0.62, "state": "thinking" },
+                { "id": "f1", "type": "text",    "kind": "focus",     "title": "Tool", "subtitle": "Edit", "time": "14:32" },
+                { "id": "s1", "type": "status",  "kind": "systemStatus", "title": "Branch", "label": "main", "state": "ok" }
+              ]
+            }
+          ],
+          "items": []
+        }
+      ]
+    }
+    """
+
+    /// A per-slot content file — the format for `hud_leftDock.json` / `hud_rightDock.json`.
+    private static let slotSample = """
+    {
+      "sections": [
+        {
+          "id": "main",
+          "title": "Section Title",
+          "items": [
+            { "id": "i1", "type": "status", "kind": "todo", "title": "Task one",   "state": "done" },
+            { "id": "i2", "type": "status", "kind": "todo", "title": "Task two",   "state": "running" },
+            { "id": "i3", "type": "status", "kind": "todo", "title": "Task three", "state": "pending" }
+          ]
+        }
+      ],
+      "items": []
     }
     """
 }
