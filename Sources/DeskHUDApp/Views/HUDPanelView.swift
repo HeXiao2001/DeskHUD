@@ -60,8 +60,13 @@ struct HUDPanelView: View {
             }
             Spacer(minLength: 0)
         }
-        .animation(.linear(duration: config.window.scrollIntervalSeconds), value: scrollOffset)
-        .animation(.easeInOut(duration: 0.3), value: sectionIndex)
+        .id(scrollOffset)  // treat whole group as one unit for transitions
+        .transition(.asymmetric(
+            insertion: .move(edge: .bottom).combined(with: .opacity),
+            removal: .move(edge: .top).combined(with: .opacity)
+        ))
+        .animation(.easeInOut(duration: 0.35), value: scrollOffset)
+        .animation(.easeInOut(duration: 0.35), value: sectionIndex)
     }
 
     /// Returns up to `visibleCount` items starting at `scrollOffset`, wrapping around.
