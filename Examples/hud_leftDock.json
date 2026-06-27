@@ -1,19 +1,18 @@
 {
   "sections": [
     {
-      "id": "focus",
-      "title": "Focus",
+      "id": "now",
+      "title": "Now",
       "items": [
-        { "id": "f1", "type": "text", "kind": "today", "title": "DeskHUD", "subtitle": "Ship display core" }
+        { "id": "focus1", "type": "text", "kind": "focus", "title": "DeskHUD", "subtitle": "Test Settings Dock-follow fix" },
+        { "id": "next1", "type": "status", "kind": "todo", "title": "Run release checks", "label": "next", "state": "pending" }
       ]
     },
     {
-      "id": "tasks",
-      "title": "Tasks",
+      "id": "agenda",
+      "title": "Agenda",
       "items": [
-        { "id": "t1", "type": "status", "kind": "todo", "title": "Design schema",   "state": "done" },
-        { "id": "t2", "type": "status", "kind": "todo", "title": "Build renderer",  "state": "running" },
-        { "id": "t3", "type": "status", "kind": "todo", "title": "Write tests",     "state": "pending" }
+        { "id": "event1", "type": "text", "kind": "event", "title": "14:30 Group meeting", "subtitle": "Prepare 3 progress slides" }
       ]
     }
   ],

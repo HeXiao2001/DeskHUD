@@ -42,6 +42,15 @@ Any writer (AI / script / app / cloud sync)
   └─→ Remote JSON file    ──┘     (beside the Dock, every display)
 ```
 
+## Content Convention
+
+| Panel | Role | Shows |
+|-------|------|-------|
+| Left | Now Queue | What to pay attention to next — meetings, focus tasks, blocked items |
+| Right | Context Card | Why this matters — project direction, next decision, quiet reflection |
+
+Progress bars are reserved for real active processes (agents, builds, tests, sync, timers). Sparse > filler.
+
 ## Configuration
 
 Set `watchDirectory` in `config.json` to any local or cloud-synced directory. DeskHUD loads all files from there and auto-reloads on changes. Merge content from multiple locations by pointing `watchDirectory` at a sync folder (iCloud, Dropbox, any cloud drive).

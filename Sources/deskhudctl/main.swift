@@ -128,6 +128,13 @@ struct DeskHUDCTL {
         - AI should adapt content to the user's current project, time of day, and active repos.
         - Write atomically: write to .tmp, flush, rename to .json.
 
+        ## Content strategy
+
+        Left panel = Now Queue (operational: what to do next).
+        Right panel = Context Card (why am I doing this, next good decision).
+        Progress bars only for real active processes (agent, build, test, sync, timer).
+        Sparse content is better than filler — if unsure, write fewer items.
+
         ## AI writing tips
 
         - Use Apple system emoji in titles — the full macOS emoji set is available
@@ -277,15 +284,15 @@ struct DeskHUDCTL {
     }
     """
 
-    /// Right panel — summary status, git branch, brief indicators.
+    /// Right panel — quiet context card, no decorative progress bars.
     private static let rightSample = """
     {
       "sections": [
         {
-          "id": "summary", "title": null,
+          "id": "context", "title": null,
           "items": [
-            { "id": "r1", "type": "status", "kind": "systemStatus", "title": "Branch", "label": "main", "state": "ok" },
-            { "id": "r2", "type": "text",   "kind": "today", "title": "Last sync", "subtitle": "14:32" }
+            { "id": "r1", "type": "text", "kind": "focus", "title": "DeskHUD", "subtitle": "Stabilize before adding features" },
+            { "id": "r2", "type": "text", "kind": "reflection", "title": "Today", "subtitle": "Prefer boundary tests over new UI" }
           ]
         }
       ],

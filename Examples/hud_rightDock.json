@@ -1,11 +1,11 @@
 {
   "sections": [
     {
-      "id": "now",
+      "id": "context",
       "title": null,
       "items": [
-        { "id": "r1", "type": "text", "kind": "today", "title": "💡 Next", "subtitle": "Review open PRs", "time": "14:30" },
-        { "id": "r2", "type": "progress", "kind": "goal", "title": "DeskHUD MVP", "label": "7/1 → 7/15", "value": 0.72, "state": "running" }
+        { "id": "ctx1", "type": "text", "kind": "focus", "title": "DeskHUD", "subtitle": "Stabilize display core before adding features" },
+        { "id": "ctx2", "type": "text", "kind": "reflection", "title": "Today", "subtitle": "Prefer boundary tests over new UI ideas" }
       ]
     }
   ],
