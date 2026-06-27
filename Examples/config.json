@@ -14,6 +14,7 @@
     "cornerRadius": 14,
     "opacity": 0.84,
     "maxLines": 2,
-    "contentDensity": "comfortable"
+    "contentDensity": "comfortable",
+    "scrollIntervalSeconds": 4
   }
 }

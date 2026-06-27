@@ -33,30 +33,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func renderInitialHUD() {
-        // If a watch directory is configured, load everything from there.
-        // Otherwise fall back to the bundled Examples/ directory.
-        let baseDir: URL? = {
-            if let dir = currentConfig.watchDirectory, !dir.isEmpty {
-                let expanded = (dir as NSString).expandingTildeInPath
-                let url = URL(fileURLWithPath: expanded)
-                guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-                return url
-            }
-            return nil
+        // 1. Always load bundled config for defaults.
+        let bundledConfigURL = resourceURL(named: "config", extension: "json")
+        let bundledConfig = bundledConfigURL.flatMap { try? loader.loadConfig(from: $0).get() } ?? HUDConfig()
+
+        // 2. Use the watchDirectory from currentConfig if the user overrode it
+        //    in Settings, otherwise from the bundled config file.
+        let watchPath = currentConfig.watchDirectory?.isEmpty == false
+            ? currentConfig.watchDirectory
+            : bundledConfig.watchDirectory
+        let watchDir: URL? = {
+            guard let dir = watchPath, !dir.isEmpty else { return nil }
+            let url = URL(fileURLWithPath: (dir as NSString).expandingTildeInPath)
+            return FileManager.default.fileExists(atPath: url.path) ? url : nil
         }()
 
-        let configURL = baseDir?.appendingPathComponent("config.json")
-            ?? resourceURL(named: "config", extension: "json")
-        let hudURL = baseDir?.appendingPathComponent("hud.json")
-            ?? resourceURL(named: "hud", extension: "json")
+        // 3. Merge external config (if any) on top of bundled.  Missing fields
+        //    keep their bundled values so incomplete external configs work.
+        if let watchDir, let extURL = watchDir.appendingPathComponentIfExists("config.json") {
+            if case .success(let extConfig) = loader.loadConfig(from: extURL) {
+                currentConfig = extConfig
+            } else {
+                currentConfig = bundledConfig
+            }
+        } else {
+            currentConfig = bundledConfig
+        }
+        // Preserve the active watchDirectory
+        currentConfig.watchDirectory = watchPath
 
-        currentConfig = configURL.flatMap { try? loader.loadConfig(from: $0).get() } ?? HUDConfig()
+        // 4. Load HUD from watch dir or bundled.
+        let hudURL: URL? = {
+            if let watchDir { return watchDir.appendingPathComponentIfExists("hud.json") }
+            return resourceURL(named: "hud", extension: "json")
+        }()
         var document = hudURL.flatMap { try? loader.loadHUD(from: $0).get() } ?? .empty
 
-        // Merge per-slot content files (hud_leftDock.json, hud_rightDock.json, etc.)
-        document = mergeSlotFiles(into: document, baseDir: baseDir)
-
-        // Aggregate calendar into the left (agenda) slot.
+        // 5. Per-slot files and calendar.
+        document = mergeSlotFiles(into: document, baseDir: watchDir)
         document = mergeAgendaSources(into: document)
 
         currentDocument = document
@@ -122,13 +136,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func resourceURL(named name: String, extension fileExtension: String) -> URL? {
+        // 1. Check bundle Resources
         if let bundled = Bundle.main.url(forResource: name, withExtension: fileExtension, subdirectory: "Examples") {
             return bundled
         }
-        let fallback = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        // 2. Check current directory (for development)
+        let cwdFallback = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
             .appendingPathComponent("Examples")
             .appendingPathComponent("\(name).\(fileExtension)")
-        return FileManager.default.fileExists(atPath: fallback.path) ? fallback : nil
+        if FileManager.default.fileExists(atPath: cwdFallback.path) { return cwdFallback }
+        // 3. Check next to executable (for app bundles where cwd is /)
+        let exeDir = Bundle.main.bundleURL
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Resources").appendingPathComponent("Examples")
+            .appendingPathComponent("\(name).\(fileExtension)")
+        if FileManager.default.fileExists(atPath: exeDir.path) { return exeDir }
+        return nil
     }
 
     // MARK: - Menu bar
@@ -155,8 +178,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settingsWindowController = SettingsWindowController(config: currentConfig)
             settingsWindowController?.onConfigChanged = { [weak self] newConfig in
                 Task { @MainActor [weak self] in
+                    let dirChanged = newConfig.watchDirectory != self?.currentConfig.watchDirectory
                     self?.currentConfig = newConfig
-                    self?.windowManager.reconfigure(config: newConfig)
+                    if dirChanged {
+                        // Reload files from the new directory
+                        self?.renderInitialHUD()
+                    } else {
+                        self?.windowManager.reconfigure(config: newConfig)
+                    }
                 }
             }
         }
@@ -178,5 +207,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func quit() {
         NSApp.terminate(nil)
+    }
+
+}
+
+private extension URL {
+    func appendingPathComponentIfExists(_ name: String) -> URL? {
+        let url = appendingPathComponent(name)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 }

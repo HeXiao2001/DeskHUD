@@ -1,3 +1,4 @@
+import AppKit
 import DeskHUDCore
 import SwiftUI
 
@@ -137,13 +138,31 @@ private struct BehaviorPane: View {
             Toggle("Calendar Events", isOn: $config.calendarEvents)
 
             LabeledContent("Watch Dir:") {
-                TextField("path or empty", text: Binding(
-                    get: { config.watchDirectory ?? "" },
-                    set: { config.watchDirectory = $0.isEmpty ? nil : $0 }
-                ))
+                HStack(spacing: 4) {
+                    TextField("OneDrive or custom path", text: Binding(
+                        get: { config.watchDirectory ?? "" },
+                        set: { config.watchDirectory = $0.isEmpty ? nil : $0 }
+                    ))
+                    .frame(minWidth: 200)
+                    Button("Choose...") {
+                        browseWatchDir()
+                    }
+                }
             }
+
+            Toggle("Calendar Events", isOn: $config.calendarEvents)
 
             Toggle("Debug Logging", isOn: $config.debugLogging)
         }
+    }
+
+    private func browseWatchDir() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = false
+        panel.prompt = "Select Watch Directory"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        config.watchDirectory = url.path
     }
 }
