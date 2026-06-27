@@ -38,6 +38,37 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         self.window = window
         self.debugLogging = debugLogging
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case version
+        case effectProfile
+        case fullscreenMode
+        case displays
+        case backgroundStyle
+        case window
+        case calendarEvents
+        case launchAtLogin
+        case hideMenuBar
+        case watchDirectory
+        case debugLogging
+    }
+
+    public init(from decoder: Decoder) throws {
+        let defaults = HUDConfig()
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? defaults.version
+        effectProfile = try container.decodeIfPresent(EffectProfile.self, forKey: .effectProfile) ?? defaults.effectProfile
+        fullscreenMode = try container.decodeIfPresent(FullscreenMode.self, forKey: .fullscreenMode) ?? defaults.fullscreenMode
+        displays = try container.decodeIfPresent(DisplayMode.self, forKey: .displays) ?? defaults.displays
+        backgroundStyle = try container.decodeIfPresent(BackgroundStyle.self, forKey: .backgroundStyle) ?? defaults.backgroundStyle
+        window = try container.decodeIfPresent(HUDWindowConfig.self, forKey: .window) ?? defaults.window
+        calendarEvents = try container.decodeIfPresent(Bool.self, forKey: .calendarEvents) ?? defaults.calendarEvents
+        launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? defaults.launchAtLogin
+        hideMenuBar = try container.decodeIfPresent(Bool.self, forKey: .hideMenuBar) ?? defaults.hideMenuBar
+        watchDirectory = try container.decodeIfPresent(String.self, forKey: .watchDirectory) ?? defaults.watchDirectory
+        debugLogging = try container.decodeIfPresent(Bool.self, forKey: .debugLogging) ?? defaults.debugLogging
+    }
 }
 
 public enum FullscreenMode: String, Codable, CaseIterable, Sendable {
@@ -90,6 +121,35 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
         self.textOpacity = textOpacity
         self.contentDensity = contentDensity
         self.scrollIntervalSeconds = scrollIntervalSeconds
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case width
+        case height
+        case margin
+        case cornerRadius
+        case opacity
+        case maxLines
+        case contentDensity
+        case fontSize
+        case textOpacity
+        case scrollIntervalSeconds
+    }
+
+    public init(from decoder: Decoder) throws {
+        let defaults = HUDWindowConfig()
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        width = try container.decodeIfPresent(Double.self, forKey: .width) ?? defaults.width
+        height = try container.decodeIfPresent(Double.self, forKey: .height) ?? defaults.height
+        margin = try container.decodeIfPresent(Double.self, forKey: .margin) ?? defaults.margin
+        cornerRadius = try container.decodeIfPresent(Double.self, forKey: .cornerRadius) ?? defaults.cornerRadius
+        opacity = try container.decodeIfPresent(Double.self, forKey: .opacity) ?? defaults.opacity
+        maxLines = try container.decodeIfPresent(Int.self, forKey: .maxLines) ?? defaults.maxLines
+        contentDensity = try container.decodeIfPresent(ContentDensity.self, forKey: .contentDensity) ?? defaults.contentDensity
+        fontSize = try container.decodeIfPresent(Double.self, forKey: .fontSize) ?? defaults.fontSize
+        textOpacity = try container.decodeIfPresent(Double.self, forKey: .textOpacity) ?? defaults.textOpacity
+        scrollIntervalSeconds = try container.decodeIfPresent(Double.self, forKey: .scrollIntervalSeconds) ?? defaults.scrollIntervalSeconds
     }
 }
 

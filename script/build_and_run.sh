@@ -12,6 +12,8 @@ ICONSET_DIR="$ROOT_DIR/script/DeskHUD.iconset"
 ICNS_FILE="$ROOT_DIR/script/DeskHUD.icns"
 CERT_NAME="DeskHUD Development"
 
+cd "$ROOT_DIR"
+
 VERIFY=false
 if [[ "${1:-}" == "--verify" ]]; then
   VERIFY=true

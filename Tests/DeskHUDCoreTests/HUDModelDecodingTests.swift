@@ -49,7 +49,11 @@ final class HUDModelDecodingTests: XCTestCase {
 
         XCTAssertEqual(config.effectProfile, .low)
         XCTAssertEqual(config.fullscreenMode, .overlay)
+        XCTAssertEqual(config.launchAtLogin, false)
+        XCTAssertEqual(config.hideMenuBar, false)
         XCTAssertEqual(config.window.width, 320)
+        XCTAssertEqual(config.window.fontSize, 13)
+        XCTAssertEqual(config.window.textOpacity, 0.85)
     }
 
     func testLoaderReportsInvalidJSONWithoutThrowing() throws {

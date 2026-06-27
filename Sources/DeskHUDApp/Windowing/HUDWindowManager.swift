@@ -16,7 +16,8 @@ final class HUDWindowManager {
     private var slotStates: [String: PerSlotState] = [:]  // keyed by slot.id
     private var rotationTimer: Timer?
     private var scrollTimer: Timer?
-    private var mouseMonitor: Any?
+    private var globalMouseMonitor: Any?
+    private var localMouseMonitor: Any?
     private var dockFollowTimer: Timer?
     private var idleRefreshTimer: Timer?
     private var activeConfig: HUDConfig?
@@ -126,9 +127,13 @@ final class HUDWindowManager {
             NSWorkspace.shared.notificationCenter.removeObserver(observer)
         }
         workspaceObservers.removeAll()
-        if let mouseMonitor {
-            NSEvent.removeMonitor(mouseMonitor)
-            self.mouseMonitor = nil
+        if let globalMouseMonitor {
+            NSEvent.removeMonitor(globalMouseMonitor)
+            self.globalMouseMonitor = nil
+        }
+        if let localMouseMonitor {
+            NSEvent.removeMonitor(localMouseMonitor)
+            self.localMouseMonitor = nil
         }
 
         for managedWindow in managedWindows {
@@ -146,15 +151,27 @@ final class HUDWindowManager {
     }
 
     private func installMouseMonitor(config: HUDConfig) {
-        if mouseMonitor != nil { return }
-        mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved]) { [weak self] _ in
-            Task { @MainActor in
-                self?.handleMouseMoved(config: config)
+        // Global: fires when another app is active
+        if globalMouseMonitor == nil {
+            globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved]) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.handleMouseMoved()
+                }
+            }
+        }
+        // Local: fires when DeskHUD (or its Settings window) is active
+        if localMouseMonitor == nil {
+            localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved]) { [weak self] event in
+                Task { @MainActor [weak self] in
+                    self?.handleMouseMoved()
+                }
+                return event
             }
         }
     }
 
-    private func handleMouseMoved(config: HUDConfig) {
+    private func handleMouseMoved() {
+        guard let config = activeConfig else { return }
         lastMouseLocation = NSEvent.mouseLocation
         let shouldFollow = isInBottomDockTrackingArea(lastMouseLocation)
         if shouldFollow == isMouseNearBottomDock { return }
