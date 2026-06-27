@@ -19,10 +19,17 @@ struct DeskHUDCTL {
             sample(Array(args.dropFirst()))
         case "slot":
             print(Self.slotSample)
+        case "reload":
+            DistributedNotificationCenter.default()
+                .postNotificationName(NSNotification.Name("deskhudctl.reload"),
+                                       object: nil,
+                                       userInfo: nil,
+                                       deliverImmediately: true)
+            print("Reload signal sent.")
         case "validate":
             validate(Array(args.dropFirst()))
         case "status":
-            print("DeskHUD CLI ready. App IPC status is not implemented in this MVP.")
+            print("DeskHUD CLI ready.")
         default:
             fputs("Unknown command: \(command)\n", stderr)
             printUsage()

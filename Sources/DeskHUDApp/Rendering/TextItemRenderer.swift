@@ -17,7 +17,7 @@ private struct TextItemBody: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                HUDTypography.title(for: item, opacity: config.window.textOpacity)
+                HUDTypography.title(for: item, opacity: config.window.textOpacity, fontSize: config.window.fontSize)
                 Spacer(minLength: 4)
                 if let time = item.time, !time.isEmpty {
                     Text(time)
@@ -26,7 +26,7 @@ private struct TextItemBody: View {
                         .lineLimit(1)
                 }
             }
-            HUDTypography.optional(item.subtitle, style: .secondary, opacity: config.window.textOpacity)
+            HUDTypography.optional(item.subtitle, style: .secondary, opacity: config.window.textOpacity, fontSize: config.window.fontSize)
         }
     }
 }

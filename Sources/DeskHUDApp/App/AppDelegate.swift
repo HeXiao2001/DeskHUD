@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import DeskHUDCore
+import ServiceManagement
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -9,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var currentConfig = HUDConfig()
     private var currentDocument = HUDDocument.empty
+    private var lastError: String?
     private var settingsWindowController: SettingsWindowController?
     private var fileWatchers: [DispatchSourceFileSystemObject] = []
     private var reloadDebounceTimer: Timer?
@@ -18,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         requestAccessibilityTrustIfNeeded()
         registerRenderers()
         installMenuBarItem()
+        installCLIListener()
         renderInitialHUD()
     }
 
@@ -146,6 +149,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func applyConfigAndDocument() {
         windowManager.show(document: currentDocument, config: currentConfig)
         settingsWindowController?.updateConfig(currentConfig)
+        updateMenuBarVisibility()
+        setLoginItem(enabled: currentConfig.launchAtLogin)
+        saveSettings()
+    }
+
+    // MARK: - Settings persistence
+
+    private func configFileURL() -> URL? {
+        if let dir = currentConfig.watchDirectory, !dir.isEmpty {
+            let url = URL(fileURLWithPath: (dir as NSString).expandingTildeInPath)
+            if FileManager.default.fileExists(atPath: url.path) {
+                return url.appendingPathComponent("config.json")
+            }
+        }
+        return resourceURL(named: "config", extension: "json")
+    }
+
+    private func saveSettings() {
+        guard let url = configFileURL() else { return }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        if let data = try? encoder.encode(currentConfig) {
+            try? data.write(to: url)
+        }
+    }
+
+    // MARK: - Login item
+
+    private func setLoginItem(enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            lastError = "Login item: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - CLI IPC
+
+    private func installCLIListener() {
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(handleCLIReload),
+            name: NSNotification.Name("deskhudctl.reload"),
+            object: nil
+        )
+    }
+
+    @objc private func handleCLIReload() {
+        renderInitialHUD()
     }
 
     private func resourceURL(named name: String, extension fileExtension: String) -> URL? {
@@ -171,7 +226,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func installMenuBarItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.title = "DeskHUD"
+        if let button = item.button {
+            button.image = NSImage(systemSymbolName: "rectangle.split.2x2",
+                                    accessibilityDescription: "DeskHUD")
+            button.image?.isTemplate = true
+        }
 
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Settings...",
@@ -185,6 +244,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         item.menu = menu
         statusItem = item
+        updateMenuBarVisibility()
+    }
+
+    private func updateMenuBarVisibility() {
+        statusItem?.isVisible = !currentConfig.hideMenuBar
     }
 
     @objc private func openSettings() {

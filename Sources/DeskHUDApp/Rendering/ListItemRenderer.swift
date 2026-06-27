@@ -16,7 +16,7 @@ private struct ListItemBody: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            HUDTypography.title(for: item, opacity: config.window.textOpacity)
+            HUDTypography.title(for: item, opacity: config.window.textOpacity, fontSize: config.window.fontSize)
             ForEach(
                 Array((item.lines ?? []).prefix(config.window.maxLines).enumerated()),
                 id: \.offset

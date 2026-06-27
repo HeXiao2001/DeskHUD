@@ -127,6 +127,14 @@ private struct BehaviorPane: View {
                 Text("Main Only").tag(DisplayMode.main)
             }
 
+            LabeledContent("Font Size:") {
+                Stepper("\(Int(config.window.fontSize))pt",
+                        value: Binding(
+                            get: { config.window.fontSize },
+                            set: { config.window.fontSize = $0 }
+                        ), in: 9 ... 18, step: 1)
+            }
+
             LabeledContent("Scroll speed:") {
                 Stepper("\(Int(config.window.scrollIntervalSeconds))s per page",
                         value: Binding(
@@ -136,22 +144,8 @@ private struct BehaviorPane: View {
             }
 
             Toggle("Calendar Events", isOn: $config.calendarEvents)
-
-            LabeledContent("Watch Dir:") {
-                HStack(spacing: 4) {
-                    TextField("OneDrive or custom path", text: Binding(
-                        get: { config.watchDirectory ?? "" },
-                        set: { config.watchDirectory = $0.isEmpty ? nil : $0 }
-                    ))
-                    .frame(minWidth: 200)
-                    Button("Choose...") {
-                        browseWatchDir()
-                    }
-                }
-            }
-
-            Toggle("Calendar Events", isOn: $config.calendarEvents)
-
+            Toggle("Launch at Login", isOn: $config.launchAtLogin)
+            Toggle("Hide Menu Bar", isOn: $config.hideMenuBar)
             Toggle("Debug Logging", isOn: $config.debugLogging)
         }
     }

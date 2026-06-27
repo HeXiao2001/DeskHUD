@@ -8,6 +8,8 @@ public struct HUDConfig: Codable, Equatable, Sendable {
     public var backgroundStyle: BackgroundStyle
     public var window: HUDWindowConfig
     public var calendarEvents: Bool
+    public var launchAtLogin: Bool
+    public var hideMenuBar: Bool
     public var watchDirectory: String?
     public var debugLogging: Bool
 
@@ -18,6 +20,8 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         displays: DisplayMode = .all,
         backgroundStyle: BackgroundStyle = .clear,
         calendarEvents: Bool = false,
+        launchAtLogin: Bool = false,
+        hideMenuBar: Bool = false,
         watchDirectory: String? = nil,
         window: HUDWindowConfig = HUDWindowConfig(),
         debugLogging: Bool = true
@@ -28,6 +32,8 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         self.displays = displays
         self.backgroundStyle = backgroundStyle
         self.calendarEvents = calendarEvents
+        self.launchAtLogin = launchAtLogin
+        self.hideMenuBar = hideMenuBar
         self.watchDirectory = watchDirectory
         self.window = window
         self.debugLogging = debugLogging
@@ -58,6 +64,7 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
     public var opacity: Double
     public var maxLines: Int
     public var contentDensity: ContentDensity
+    public var fontSize: Double
     public var textOpacity: Double
     public var scrollIntervalSeconds: Double
 
@@ -67,6 +74,7 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
         margin: Double = 18,
         cornerRadius: Double = 14,
         opacity: Double = 0.82,
+        fontSize: Double = 13,
         maxLines: Int = 1,
         textOpacity: Double = 0.85,
         contentDensity: ContentDensity = .comfortable,
@@ -77,6 +85,7 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
         self.margin = margin
         self.cornerRadius = cornerRadius
         self.opacity = opacity
+        self.fontSize = fontSize
         self.maxLines = maxLines
         self.textOpacity = textOpacity
         self.contentDensity = contentDensity
