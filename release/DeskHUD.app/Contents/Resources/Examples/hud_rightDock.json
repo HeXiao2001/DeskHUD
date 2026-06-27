@@ -1,0 +1,12 @@
+{
+  "sections": [
+    {
+      "id": "summary",
+      "title": null,
+      "items": [
+        { "id": "s1", "type": "status", "kind": "systemStatus", "title": "Branch", "label": "main", "state": "ok" }
+      ]
+    }
+  ],
+  "items": []
+}

@@ -4,15 +4,25 @@ Native macOS persistent HUD overlay — file-driven, read-only, Dock-side.
 
 DeskHUD watches JSON files and renders lightweight status panels in the unused space beside the macOS Dock. It does **not** generate content, call APIs, or run AI models. It only reads files, parses valid state, and displays it.
 
-## Quick Start
+## Install
+
+1. Download `DeskHUD-v0.1.0.dmg` from [Releases](https://github.com/HeXiao2001/DeskHUD/releases)
+2. Open the DMG, drag `DeskHUD.app` to `/Applications`
+3. Launch DeskHUD from Applications (or `open /Applications/DeskHUD.app`)
+4. Grant Accessibility permission when prompted (required for Dock tracking)
+5. Grant Calendar permission if you want to see events (optional)
+
+**Auto-start**: Add DeskHUD to System Settings → General → Login Items.
+
+**Updates**: Menu bar → Check for Updates... → download latest DMG.
+
+## Quick Start (Developers)
 
 ```bash
-# Build & run
+git clone https://github.com/HeXiao2001/DeskHUD.git
+cd DeskHUD
 ./script/build_and_run.sh --verify
-
-# CLI
-swift run deskhudctl schema          # AI: read this first
-swift run deskhudctl sample minimal  # Output a template
+```
 swift run deskhudctl validate hud Examples/hud.json
 ```
 

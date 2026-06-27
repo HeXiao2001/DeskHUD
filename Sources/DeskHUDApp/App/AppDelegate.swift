@@ -170,6 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                  keyEquivalent: ","))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Reload", action: #selector(reloadHUD), keyEquivalent: "r"))
+        menu.addItem(NSMenuItem(title: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
 
@@ -256,6 +257,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func reloadHUD() {
         renderInitialHUD()
+    }
+
+    @objc private func checkForUpdates() {
+        NSWorkspace.shared.open(URL(string: "https://github.com/HeXiao2001/DeskHUD/releases")!)
     }
 
     @objc private func quit() {
