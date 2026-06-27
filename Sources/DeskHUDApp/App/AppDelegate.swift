@@ -37,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registry.register(ListItemRenderer())
         registry.register(StatusItemRenderer())
         registry.register(AlertItemRenderer())
+        registry.register(CountdownItemRenderer())
     }
 
     private func renderInitialHUD() {
