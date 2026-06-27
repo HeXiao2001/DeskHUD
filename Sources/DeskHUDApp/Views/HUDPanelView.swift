@@ -60,7 +60,7 @@ struct HUDPanelView: View {
             }
             Spacer(minLength: 0)
         }
-        .animation(.easeInOut(duration: 0.3), value: scrollOffset)
+        .animation(.linear(duration: config.window.scrollIntervalSeconds), value: scrollOffset)
         .animation(.easeInOut(duration: 0.3), value: sectionIndex)
     }
 

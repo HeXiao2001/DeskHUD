@@ -1,7 +1,7 @@
 {
   "version": 1,
   "effectProfile": "low",
-  "fullscreenMode": "overlay",
+  "fullscreenMode": "desktopOnly",
   "displays": "all",
   "backgroundStyle": "clear",
   "calendarEvents": true,

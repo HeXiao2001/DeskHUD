@@ -14,7 +14,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
     public init(
         version: Int = 1,
         effectProfile: EffectProfile = .low,
-        fullscreenMode: FullscreenMode = .overlay,
+        fullscreenMode: FullscreenMode = .desktopOnly,
         displays: DisplayMode = .all,
         backgroundStyle: BackgroundStyle = .clear,
         calendarEvents: Bool = false,
