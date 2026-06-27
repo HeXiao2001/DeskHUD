@@ -82,12 +82,12 @@ struct HUDPanelView: View {
     }
 
     /// Estimate how many items fit in the remaining panel height.
+    /// Always shows at least 2 items when available — compact text items fit.
     private func maxVisibleItems() -> Int {
-        // Conservative: each item row ≈ 22pt, section title ≈ 16pt with padding
         let titleOverhead: CGFloat = (currentSection?.title?.isEmpty == false ? 16 : 0)
         let available = height - padding * 2 - titleOverhead
-        let perItem: CGFloat = itemSpacing + 20  // 20pt ≈ two lines of 11pt text
-        return max(1, Int(available / perItem))
+        let perItem: CGFloat = itemSpacing + 18
+        return max(2, Int(available / perItem))
     }
 
     // MARK: - Shared styling

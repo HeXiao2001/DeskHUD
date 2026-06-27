@@ -39,7 +39,8 @@ final class HUDModelDecodingTests: XCTestCase {
             "opacity": 0.84,
             "maxLines": 4,
             "contentDensity": "comfortable",
-            "scrollIntervalSeconds": 4
+            "scrollIntervalSeconds": 4,
+            "durationSeconds": null
           }
         }
         """#.data(using: .utf8)!

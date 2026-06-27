@@ -287,6 +287,32 @@ final class HUDWindowManager {
         }
     }
 
+    /// Adjust scroll timer interval to match the current item's `durationSeconds`,
+    /// falling back to the global `scrollIntervalSeconds`.
+    private func rescheduleScrollTimer() {
+        guard let config = activeConfig, let document = activeDocument else { return }
+        let defaultInterval = config.window.scrollIntervalSeconds
+        var targetInterval = defaultInterval
+        for slot in document.slots {
+            let sections = slot.resolvedSections
+            let state = slotStates[slot.id] ?? PerSlotState()
+            guard state.sectionIndex < sections.count else { continue }
+            let section = sections[state.sectionIndex]
+            guard state.scrollOffset < section.items.count else { continue }
+            let item = section.items[state.scrollOffset]
+            if let custom = item.durationSeconds, custom > 0 {
+                targetInterval = custom
+            }
+        }
+        guard scrollTimer?.timeInterval != targetInterval else { return }
+        scrollTimer?.invalidate()
+        scrollTimer = Timer.scheduledTimer(withTimeInterval: targetInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.scrollTick()
+            }
+        }
+    }
+
     private func scrollTick() {
         guard let document = activeDocument, let config = activeConfig else { return }
         var changed = false
@@ -354,6 +380,7 @@ final class HUDWindowManager {
             )
             managedWindow.hostingView.frame = NSRect(origin: .zero, size: frame.size)
         }
+        rescheduleScrollTimer()
     }
 
     // MARK: - Workspace events (triggers immediate Dock width re-check)

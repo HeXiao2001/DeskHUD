@@ -164,6 +164,7 @@ public struct HUDItem: Codable, Identifiable, Equatable, Sendable {
     public var unit: String?
     public var state: String?
     public var time: String?
+    public var durationSeconds: Double?
     public var lines: [String]?
 
     public init(
@@ -177,6 +178,7 @@ public struct HUDItem: Codable, Identifiable, Equatable, Sendable {
         unit: String? = nil,
         state: String? = nil,
         time: String? = nil,
+        durationSeconds: Double? = nil,
         lines: [String]? = nil
     ) {
         self.id = id
@@ -189,6 +191,7 @@ public struct HUDItem: Codable, Identifiable, Equatable, Sendable {
         self.unit = unit
         self.state = state
         self.time = time
+        self.durationSeconds = durationSeconds
         self.lines = lines
     }
 }

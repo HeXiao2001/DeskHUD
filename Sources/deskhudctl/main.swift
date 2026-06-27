@@ -107,12 +107,14 @@ struct DeskHUDCTL {
 
         | File | Panel | Purpose |
         |------|-------|---------|
-        | `hud_leftDock.json` | Left | Tasks, todos, schedule, focus |
-        | `hud_rightDock.json` | Right | Summary status, git branch, live progress |
+        | `hud_leftDock.json` | Left | Scrolling agenda: tasks, schedule, reminders. AI organizes user input. |
+        | `hud_rightDock.json` | Right | Context-aware tips & status. AI recommends what to do next. |
 
-        - Writers edit per-slot files directly — each file is independent.
-        - Use `hud_leftDock.json` for agenda items, `hud_rightDock.json` for status.
-        - Write atomically: write to `.tmp`, flush, rename to `.json`.
+        - The left panel scrolls through items. Items with `durationSeconds` stay
+          longer; short tasks can use the default (config.window.scrollIntervalSeconds).
+        - The right panel is relatively stable — update when context changes.
+        - AI should adapt content to the user's current project and time of day.
+        - Write atomically: write to .tmp, flush, rename to .json.
 
         ## HUD Document (hud.json or full document)
         {
@@ -160,6 +162,7 @@ struct DeskHUDCTL {
                                    //   blocked/warning=yellow   error/failed=red
                                    //   pending/todo/idle=dim
           "time": "14:32",         // free-form time / duration label
+          "durationSeconds": 8,    // custom display duration for this item (seconds)
           "lines": ["line 1", "line 2"]  // multi-line text (list type)
         }
 
