@@ -10,6 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var currentConfig = HUDConfig()
     private var currentDocument = HUDDocument.empty
     private var settingsWindowController: SettingsWindowController?
+    private var fileWatchers: [DispatchSourceFileSystemObject] = []
+    private var reloadDebounceTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -19,6 +21,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         renderInitialHUD()
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        stopFileWatchers()
+        windowManager.closeAll()
+    }
+
     private func registerRenderers() {
         let registry = HUDItemRendererRegistry.shared
         registry.register(TextItemRenderer())
@@ -26,10 +33,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registry.register(ProgressItemRenderer())
         registry.register(ListItemRenderer())
         registry.register(StatusItemRenderer())
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        windowManager.closeAll()
     }
 
     private func renderInitialHUD() {
@@ -75,6 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         currentDocument = document
         applyConfigAndDocument()
+        installFileWatchers(watchDir: watchDir)
     }
 
     /// For each slot, if a file named `hud_{slot.id}.json` exists, load it and
@@ -191,6 +195,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         settingsWindowController?.updateConfig(currentConfig)
         settingsWindowController?.show()
+    }
+
+    // MARK: - File watcher
+
+    private func installFileWatchers(watchDir: URL?) {
+        stopFileWatchers()
+        let dir = watchDir ?? resourceURL(named: "config", extension: "json")?.deletingLastPathComponent()
+        guard let dir else { return }
+
+        let watchedFiles = ["hud.json", "hud_leftDock.json", "hud_rightDock.json", "config.json"]
+        for fileName in watchedFiles {
+            let fileURL = dir.appendingPathComponent(fileName)
+            guard FileManager.default.fileExists(atPath: fileURL.path) else { continue }
+
+            let fd = open(fileURL.path, O_EVTONLY)
+            guard fd >= 0 else { continue }
+
+            let source = DispatchSource.makeFileSystemObjectSource(
+                fileDescriptor: fd,
+                eventMask: [.write, .rename, .delete],
+                queue: .main
+            )
+            source.setEventHandler { [weak self] in
+                self?.scheduleDebouncedReload()
+            }
+            source.setCancelHandler {
+                close(fd)
+            }
+            source.resume()
+            fileWatchers.append(source)
+        }
+    }
+
+    private func scheduleDebouncedReload() {
+        reloadDebounceTimer?.invalidate()
+        reloadDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.renderInitialHUD()
+            }
+        }
+    }
+
+    private func stopFileWatchers() {
+        reloadDebounceTimer?.invalidate()
+        reloadDebounceTimer = nil
+        for source in fileWatchers {
+            source.cancel()
+        }
+        fileWatchers.removeAll()
     }
 
     // MARK: - Accessibility
