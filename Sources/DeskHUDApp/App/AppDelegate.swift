@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registry.register(ProgressItemRenderer())
         registry.register(ListItemRenderer())
         registry.register(StatusItemRenderer())
+        registry.register(AlertItemRenderer())
     }
 
     private func renderInitialHUD() {

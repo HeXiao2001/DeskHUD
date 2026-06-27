@@ -207,6 +207,7 @@ struct DeskHUDCTL {
         type=progress uses: title, label, value (0–1), state
         type=list     uses: title, lines[]
         type=status   uses: title, label, state
+        type=alert    uses: title, subtitle, state — for urgent temporary states
 
         ## Config file (config.json) — all fields
         {

@@ -274,6 +274,7 @@ public enum HUDItemType: String, Codable, Sendable {
     case progress
     case list
     case status
+    case alert
 }
 
 /// Lightweight payload for a single slot file (e.g. `hud_leftDock.json`).
