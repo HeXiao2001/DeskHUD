@@ -118,13 +118,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             items.append(contentsOf: CalendarReader.fetch())
         }
 
-        // Sort: incomplete first (running > pending), then by time label
+        // Sort: by time first (schedule + todos interleaved chronologically),
+        // then incomplete before done.
         items.sort { a, b in
+            let aTime = a.label ?? a.time ?? ""
+            let bTime = b.label ?? b.time ?? ""
+            // Items with time come before items without
+            let aHasTime = !aTime.isEmpty
+            let bHasTime = !bTime.isEmpty
+            if aHasTime != bHasTime { return aHasTime }
+            // Both have time → chronological
+            if aHasTime && bHasTime && aTime != bTime { return aTime < bTime }
+            // Same time or both no time → incomplete first
             let order: [String] = ["running", "active", "working", "thinking", "pending", "todo", "done"]
             let aIdx = order.firstIndex(of: a.state?.lowercased() ?? "") ?? order.count
             let bIdx = order.firstIndex(of: b.state?.lowercased() ?? "") ?? order.count
-            if aIdx != bIdx { return aIdx < bIdx }
-            return (a.label ?? a.time ?? "") < (b.label ?? b.time ?? "")
+            return aIdx < bIdx
         }
 
         doc.slots[leftIndex].sections = [
