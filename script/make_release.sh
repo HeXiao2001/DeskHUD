@@ -6,14 +6,15 @@ BUNDLE_ID="dev.hex.deskhud"
 VERSION="${1:-0.1.0}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RELEASE_DIR="$ROOT_DIR/release"
-APP_DIR="$RELEASE_DIR/$APP_NAME.app"
+STAGING="$RELEASE_DIR/dmg_staging"
+APP_DIR="$STAGING/$APP_NAME.app"
 CERT_NAME="DeskHUD Development"
 
 echo "=== Building DeskHUD v$VERSION (release) ==="
 
 # Clean
 rm -rf "$RELEASE_DIR"
-mkdir -p "$RELEASE_DIR"
+mkdir -p "$STAGING"
 
 # Release build
 swift build -c release --product "$APP_NAME"
@@ -76,11 +77,51 @@ else
   echo "Ad-hoc signed"
 fi
 
-# Create DMG
+# ── DMG with drag-to-install layout ──────────────────────────────────────
+
+# Create Applications symlink for drag-to-install
+ln -s /Applications "$STAGING/Applications"
+
 DMG_PATH="$RELEASE_DIR/DeskHUD-v$VERSION.dmg"
-hdiutil create -fs HFS+ -srcfolder "$RELEASE_DIR/$APP_NAME.app" -volname "DeskHUD v$VERSION" "$DMG_PATH" >/dev/null
+DMG_TMP="$RELEASE_DIR/DeskHUD-tmp.dmg"
+VOLNAME="DeskHUD v$VERSION"
+
+# Create read-write DMG
+hdiutil create -fs HFS+ -volname "$VOLNAME" -srcfolder "$STAGING" -size 10m "$DMG_TMP" >/dev/null
+
+# Mount and set layout
+DEV=$(hdiutil attach -readwrite -noverify -noautoopen "$DMG_TMP" 2>&1 | grep /Volumes | awk '{print $1}')
+MOUNT="/Volumes/$VOLNAME"
+
+# Arrange icons (left=DeskHUD, right=Applications symlink)
+osascript <<APPLESCRIPT
+tell application "Finder"
+  tell disk "$VOLNAME"
+    open
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set bounds of container window to {200, 200, 580, 420}
+    set viewOptions to the icon view options of container window
+    set arrangement of viewOptions to not arranged
+    set icon size of viewOptions to 80
+    set position of item "$APP_NAME.app" to {90, 100}
+    set position of item "Applications" to {290, 100}
+    update without registering applications
+    close
+  end tell
+end tell
+APPLESCRIPT
+
+# Detach and convert to compressed read-only
+hdiutil detach "$DEV" >/dev/null
+hdiutil convert "$DMG_TMP" -format UDZO -imagekey zlib-level=9 -o "$DMG_PATH" >/dev/null
+rm -f "$DMG_TMP"
+
+# Clean staging
+rm -rf "$STAGING"
+
 echo ""
 echo "=== Release built ==="
 echo "DMG: $DMG_PATH"
-echo "App: $APP_DIR"
 ls -lh "$DMG_PATH"
