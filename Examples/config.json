@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "effectProfile": "low",
+  "fullscreenMode": "overlay",
+  "displays": "all",
+  "debugLogging": false,
+  "window": {
+    "width": 320,
+    "height": 118,
+    "margin": 18,
+    "cornerRadius": 14,
+    "opacity": 0.84,
+    "maxLines": 4,
+    "contentDensity": "comfortable"
+  }
+}

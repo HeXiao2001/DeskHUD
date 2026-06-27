@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "slots": [
+    {
+      "id": "leftDock",
+      "anchor": "dock.left",
+      "rotation": { "enabled": false, "intervalSeconds": 45 },
+      "items": [
+        {
+          "id": "today-title",
+          "type": "text",
+          "kind": "today",
+          "title": "Today",
+          "subtitle": "Focus on parser and display core"
+        },
+        {
+          "id": "today-list",
+          "type": "list",
+          "kind": "todo",
+          "title": "Next",
+          "lines": ["Ship first HUD window", "Keep idle CPU near zero", "Verify full-screen behavior"]
+        }
+      ]
+    },
+    {
+      "id": "rightDock",
+      "anchor": "dock.right",
+      "rotation": { "enabled": false, "intervalSeconds": 45 },
+      "items": [
+        {
+          "id": "build-progress",
+          "type": "progress",
+          "kind": "aiProgress",
+          "title": "DeskHUD",
+          "label": "Display core",
+          "value": 0.35,
+          "state": "running"
+        },
+        {
+          "id": "status",
+          "type": "status",
+          "kind": "systemStatus",
+          "title": "Mode",
+          "label": "Read-only file driven",
+          "state": "ok"
+        }
+      ]
+    }
+  ]
+}
