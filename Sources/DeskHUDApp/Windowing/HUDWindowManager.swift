@@ -55,16 +55,56 @@ final class HUDWindowManager {
     }
 
     private func frameForSlot(_ slot: HUDSlot, on screen: NSScreen, config: HUDConfig) -> NSRect {
+        let screenFrame = screen.frame
         let visible = screen.visibleFrame
         let size = NSSize(width: config.window.width, height: config.window.height)
+        let margin = config.window.margin
+        let bottomDockBandHeight = max(0, visible.minY - screenFrame.minY)
+        let leftDockBandWidth = max(0, visible.minX - screenFrame.minX)
+        let rightDockBandWidth = max(0, screenFrame.maxX - visible.maxX)
+
         let x: CGFloat
+        let y: CGFloat
+
+        if bottomDockBandHeight > 24 {
+            x = xForBottomDockSlot(slot, screenFrame: screenFrame, size: size, margin: margin)
+            y = screenFrame.minY + max(6, (bottomDockBandHeight - size.height) / 2)
+        } else if leftDockBandWidth > 24 || rightDockBandWidth > 24 {
+            x = xForSideDockSlot(slot, visible: visible, size: size, margin: margin)
+            y = visible.minY + margin
+        } else {
+            x = xForSideDockSlot(slot, visible: visible, size: size, margin: margin)
+            y = visible.minY + margin
+        }
+
+        return NSRect(x: x.rounded(), y: y.rounded(), width: size.width, height: size.height)
+    }
+
+    private func xForBottomDockSlot(
+        _ slot: HUDSlot,
+        screenFrame: NSRect,
+        size: NSSize,
+        margin: CGFloat
+    ) -> CGFloat {
         switch slot.anchor {
         case .dockLeft:
-            x = visible.minX + config.window.margin
+            return screenFrame.minX + margin
         case .dockRight:
-            x = visible.maxX - config.window.margin - size.width
+            return screenFrame.maxX - margin - size.width
         }
-        let y = visible.minY + config.window.margin
-        return NSRect(x: x.rounded(), y: y.rounded(), width: size.width, height: size.height)
+    }
+
+    private func xForSideDockSlot(
+        _ slot: HUDSlot,
+        visible: NSRect,
+        size: NSSize,
+        margin: CGFloat
+    ) -> CGFloat {
+        switch slot.anchor {
+        case .dockLeft:
+            return visible.minX + margin
+        case .dockRight:
+            return visible.maxX - margin - size.width
+        }
     }
 }

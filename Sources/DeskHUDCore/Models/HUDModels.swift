@@ -46,11 +46,11 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
 
     public init(
         width: Double = 300,
-        height: Double = 112,
+        height: Double = 82,
         margin: Double = 18,
         cornerRadius: Double = 14,
         opacity: Double = 0.82,
-        maxLines: Int = 4,
+        maxLines: Int = 2,
         contentDensity: ContentDensity = .comfortable
     ) {
         self.width = width

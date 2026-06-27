@@ -6,11 +6,11 @@
   "debugLogging": false,
   "window": {
     "width": 320,
-    "height": 118,
+    "height": 82,
     "margin": 18,
     "cornerRadius": 14,
     "opacity": 0.84,
-    "maxLines": 4,
+    "maxLines": 2,
     "contentDensity": "comfortable"
   }
 }
