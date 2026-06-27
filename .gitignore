@@ -4,3 +4,4 @@ dist/
 *.xcuserdata/
 script/certs/
 script/DeskHUD.iconset/
+release/
