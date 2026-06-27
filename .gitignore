@@ -5,3 +5,5 @@ dist/
 script/certs/
 script/DeskHUD.iconset/
 release/
+.codex/
+docs/superpowers/
