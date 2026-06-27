@@ -118,7 +118,8 @@ struct DeskHUDCTL {
 
         ## AI writing tips
 
-        - Use Unicode emoji in titles (🎯 📅 ✅ ⏰ 📄 💻 🚀 ⚠️) for visual cues.
+        - Use Apple system emoji in titles — the full macOS emoji set is available
+          (🎯 📅 ✅ ⏰ 📄 💻 🚀 ⚠️ 💡 🕗 🕙 🕑 📋 📝 🌿 🔴 🟡 🟢 🔵 and hundreds more).
         - Every schedule/task item should have a `time` or `label` showing when.
         - For progress bars with timelines, put the date range in `label`
           (e.g. "2026-07-01 → 2026-08-15") and current progress in `value` (0–1).

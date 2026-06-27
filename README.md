@@ -6,7 +6,7 @@ DeskHUD watches JSON files and renders lightweight status panels in the unused s
 
 ## Install
 
-**AI agent / one-liner** (AI: replace `VERSION` with latest tag from releases):
+**AI agent / one-liner:**
 ```bash
 VERSION=$(curl -s https://api.github.com/repos/HeXiao2001/DeskHUD/releases/latest | grep tag_name | head -1 | cut -d'"' -f4) && curl -fsSL "https://github.com/HeXiao2001/DeskHUD/releases/download/$VERSION/DeskHUD-${VERSION}.dmg" -o /tmp/DeskHUD.dmg && hdiutil attach /tmp/DeskHUD.dmg -nobrowse && cp -R /Volumes/DeskHUD*/DeskHUD.app /Applications/ && hdiutil detach /Volumes/DeskHUD* && open /Applications/DeskHUD.app
 ```
@@ -14,53 +14,54 @@ VERSION=$(curl -s https://api.github.com/repos/HeXiao2001/DeskHUD/releases/lates
 **Manual:**
 1. Download from [Releases](https://github.com/HeXiao2001/DeskHUD/releases)
 2. Open DMG, drag `DeskHUD.app` to `/Applications`
-3. Launch from Applications
-4. Grant Accessibility permission when prompted
+3. Launch, grant Accessibility permission when prompted
 
 **Auto-start**: System Settings → General → Login Items → add DeskHUD.
 
-**Updates**: Menu bar → Check for Updates... → download latest → run the one-liner.
+**Updates**: Menu bar → Check for Updates... → download latest DMG.
 
-## Quick Start (Developers)
+## Development
 
 ```bash
 git clone https://github.com/HeXiao2001/DeskHUD.git
 cd DeskHUD
 ./script/build_and_run.sh --verify
+swift test
+swift run deskhudctl schema    # AI: start here
 ```
-swift run deskhudctl validate hud Examples/hud.json
-```
+
+macOS 14+, Apple Silicon.
 
 ## Architecture
 
 ```
-Any writer (AI / script / app / sync)
+Any writer (AI / script / app / cloud sync)
   └─→ hud_leftDock.json   ──┐
   └─→ hud_rightDock.json  ──┤
-  └─→ macOS Calendar      ──┼──→ DeskHUD ──→ Click-through HUD overlay
-  └─→ External JSON file  ──┘     (beside the Dock, every display)
+  └─→ macOS Calendar      ──┼──→ DeskHUD ──→ Click-through HUD panels
+  └─→ Remote JSON file    ──┘     (beside the Dock, every display)
 ```
 
-## File Layout
+## Configuration
 
+Set `watchDirectory` in `config.json` to any local or cloud-synced directory. DeskHUD loads all files from there and auto-reloads on changes. Merge content from multiple locations by pointing `watchDirectory` at a sync folder (iCloud, Dropbox, any cloud drive).
+
+```json
+{
+  "watchDirectory": "~/Library/CloudStorage/MyCloudDrive/DeskHUD",
+  "calendarEvents": true
+}
 ```
-Examples/
-  config.json              ← Appearance settings
-  hud.json                 ← Slot structure (optional, fallback)
-  hud_leftDock.json        ← Left panel content (agenda / tasks)
-  hud_rightDock.json       ← Right panel content (live AI status)
-  hooks/
-    update_status.py       ← Claude Code hook integration example
-```
+
+Left panel merges: per-slot files + macOS Calendar events/reminders. Right panel is free-form — AI decides what to show.
 
 ## CLI Reference
 
 ```
-deskhudctl schema             Complete JSON field reference (AI scaffold)
-deskhudctl sample minimal     Minimal HUD document
-deskhudctl sample todo        Todo / task list template
-deskhudctl sample live        Live AI status template
-deskhudctl sample full        Both sides populated
+deskhudctl schema             Full JSON field reference + AI writing guide
+deskhudctl sample left        Left panel template (tasks / schedule)
+deskhudctl sample right       Right panel template (status / tips)
+deskhudctl sample full        Both panels
 deskhudctl slot               Per-slot content file template
 deskhudctl validate hud <path>
 deskhudctl validate config <path>
@@ -77,79 +78,24 @@ deskhudctl status
 | `list` | title + bullet lines | `title`, `lines[]` |
 | `status` | colored dot + title + label | `title`, `label`, `state` |
 
-### State colors
+**State colors**: done/ok/ready→green, running/working/thinking→cyan, blocked/warning→yellow, error/failed→red, pending/todo/idle→dim.
 
-| state | color |
-|-------|-------|
-| `done`, `ok`, `ready` | green |
-| `running`, `working`, `thinking` | cyan |
-| `blocked`, `warning` | yellow |
-| `error`, `failed` | red |
-| `pending`, `todo`, `idle` | dim |
-
-## Multi-source Agenda
-
-Set in `config.json`:
-
-```json
-{
-  "calendarEvents": true,
-  "externalAgendaPath": "/Users/me/OneDrive/tasks.json"
-}
-```
-
-The left panel merges: `hud_leftDock.json` + macOS Calendar events/reminders + external file.
+**Icons**: Any Apple-native Unicode emoji or SF Symbol works in `title` and `subtitle`. Use the full system emoji set (🎯📅✅⏰📄💻🚀⚠️💡🕗🕙🕑📋📝🌿🔴🟡🟢🔵).
 
 ## Settings
 
-Menu bar → **Settings...** (⌘,) opens a live-preview settings window with Appearance, Layout, and Behavior tabs.
+Menu bar → **Settings...** (⌘,) → live-preview Appearance, Layout, Behavior.
 
 ## AI Integration
 
-### For AI agents writing to DeskHUD:
-
 ```bash
-# 1. Learn the format
-deskhudctl schema
-
-# 2. Generate a template
-deskhudctl sample todo > hud_leftDock.json
-
-# 3. Write atomically (recommended)
-cat > hud_leftDock.json.tmp <<'JSON'
-{ "sections": [...], "items": [...] }
-JSON
-mv hud_leftDock.json.tmp hud_leftDock.json
-
-# 4. Validate
+deskhudctl schema              # AI: learn the format + writing conventions
+deskhudctl sample left > hud_leftDock.json
 deskhudctl validate hud hud_leftDock.json
 ```
 
-### Claude Code hooks
+Write atomically: `cat > file.json.tmp && mv file.json.tmp file.json`
 
-See `Examples/hooks/update_status.py`. Configure in `.claude/settings.json`:
+DeskHUD auto-detects file changes via `DispatchSource` — no manual reload needed.
 
-```json
-{
-  "hooks": {
-    "Stop":       [{"command": "python3 Examples/hooks/update_status.py idle"}],
-    "PreToolUse": [{"command": "python3 Examples/hooks/update_status.py working"}]
-  }
-}
-```
-
-### Cross-platform sync (Windows ↔ Mac)
-
-1. AI on Windows writes to a OneDrive-synced JSON file
-2. OneDrive syncs to Mac at `~/OneDrive/tasks.json`
-3. DeskHUD reads it via `"externalAgendaPath": "~/OneDrive/tasks.json"`
-4. Point DeskHUD → Reload, or wait for file watcher (planned)
-
-## Build
-
-```bash
-swift build --product DeskHUD
-swift test
-```
-
-macOS 14+ required. Apple Silicon native.
+**Cross-device**: Write to a cloud-synced directory, point `watchDirectory` at it. DeskHUD merges content from all sources automatically.
