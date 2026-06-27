@@ -355,24 +355,8 @@ final class HUDWindowManager {
         scrollTimer = nil
     }
 
-    /// Estimate visible items (same logic as HUDPanelView).
-    private func maxVisibleItemCount() -> Int {
-        guard let config = activeConfig else { return 2 }
-        let pad: CGFloat = {
-            switch config.window.contentDensity {
-            case .compact: 10; case .comfortable: 12; case .spacious: 16
-            }
-        }()
-        let itemSpacing: CGFloat = {
-            switch config.window.contentDensity {
-            case .compact: 5; case .comfortable: 7; case .spacious: 9
-            }
-        }()
-        let titleOverhead: CGFloat = 16
-        let available = config.window.height - pad * 2 - titleOverhead
-        let perItem: CGFloat = itemSpacing + 22
-        return max(1, Int(available / perItem))
-    }
+    /// Always 2 items visible — matches HUDPanelView.
+    private func maxVisibleItemCount() -> Int { 2 }
 
     /// Push current slot state to every displayed window.
     /// Uses the current mouse location when the mouse is near the Dock so
