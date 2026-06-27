@@ -6,15 +6,20 @@ DeskHUD watches JSON files and renders lightweight status panels in the unused s
 
 ## Install
 
-1. Download `DeskHUD-v0.1.0.dmg` from [Releases](https://github.com/HeXiao2001/DeskHUD/releases)
-2. Open the DMG, drag `DeskHUD.app` to `/Applications`
-3. Launch DeskHUD from Applications (or `open /Applications/DeskHUD.app`)
-4. Grant Accessibility permission when prompted (required for Dock tracking)
-5. Grant Calendar permission if you want to see events (optional)
+**AI agent / one-liner** (AI: replace `VERSION` with latest tag from releases):
+```bash
+VERSION=$(curl -s https://api.github.com/repos/HeXiao2001/DeskHUD/releases/latest | grep tag_name | head -1 | cut -d'"' -f4) && curl -fsSL "https://github.com/HeXiao2001/DeskHUD/releases/download/$VERSION/DeskHUD-${VERSION}.dmg" -o /tmp/DeskHUD.dmg && hdiutil attach /tmp/DeskHUD.dmg -nobrowse && cp -R /Volumes/DeskHUD*/DeskHUD.app /Applications/ && hdiutil detach /Volumes/DeskHUD* && open /Applications/DeskHUD.app
+```
 
-**Auto-start**: Add DeskHUD to System Settings → General → Login Items.
+**Manual:**
+1. Download from [Releases](https://github.com/HeXiao2001/DeskHUD/releases)
+2. Open DMG, drag `DeskHUD.app` to `/Applications`
+3. Launch from Applications
+4. Grant Accessibility permission when prompted
 
-**Updates**: Menu bar → Check for Updates... → download latest DMG.
+**Auto-start**: System Settings → General → Login Items → add DeskHUD.
+
+**Updates**: Menu bar → Check for Updates... → download latest → run the one-liner.
 
 ## Quick Start (Developers)
 
