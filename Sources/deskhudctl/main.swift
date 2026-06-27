@@ -103,12 +103,17 @@ struct DeskHUDCTL {
         print("""
         # DeskHUD File Format Reference
 
-        ## Convention — which file to edit
+        ## Convention — which file to edit (IMPORTANT)
 
-        | File | Panel | Purpose |
-        |------|-------|---------|
-        | `hud_leftDock.json` | Left | Scrolling agenda: tasks, schedule, reminders. AI organizes user input. |
-        | `hud_rightDock.json` | Right | Context-aware tips & status. AI recommends what to do next. |
+        | File | Panel | Editable? |
+        |------|-------|-----------|
+        | `hud_leftDock.json` | Left (agenda) | **PRIMARY — edit this** |
+        | `hud_rightDock.json` | Right (context) | **PRIMARY — edit this** |
+        | `hud.json` | Master fallback | DO NOT EDIT — empty placeholder |
+
+        **Always edit per-slot files.** `hud.json` is only a fallback skeleton.
+        Per-slot files completely override any content in `hud.json` for their panel.
+        If you edit `hud.json` your changes will be IGNORED when per-slot files exist.
 
         - The left panel scrolls through items 2 at a time. Items with `durationSeconds`
           stay longer; short items use the default (scrollIntervalSeconds, default 4s).
