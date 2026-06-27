@@ -14,12 +14,15 @@ private struct StatusItemBody: View {
     let item: HUDItem
 
     var body: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(HUDTypography.statusColor(for: item.state))
-                .frame(width: 7, height: 7)
+        HStack(spacing: 4) {
             HUDTypography.title(for: item)
-            HUDTypography.optional(item.label, style: .secondary)
+                .foregroundStyle(HUDTypography.statusColor(for: item.state))
+            if let label = item.label, !label.isEmpty {
+                Text(label)
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .lineLimit(1)
+            }
         }
     }
 }

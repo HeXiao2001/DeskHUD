@@ -84,6 +84,7 @@ final class HUDWindowManager {
         installWorkspaceObservers()
         installRotationTimer()
         installScrollTimer()
+        syncContextFile()
     }
 
     /// Apply config changes to existing windows without tearing them down.
@@ -682,5 +683,46 @@ final class HUDWindowManager {
         }
         let y = visible.minY + margin
         return NSRect(x: x.rounded(), y: y.rounded(), width: effectiveWidth, height: preferredSize.height)
+    }
+
+    // MARK: - Context file (width info for AI writers)
+
+    /// Measure available panel widths and write to `hud_context.json`.
+    /// Remote AI reads this to know how many characters fit in each panel.
+    private func syncContextFile() {
+        guard let config = activeConfig else { return }
+        let watchPath = config.watchDirectory ?? {
+            // Fall back to the bundled Examples directory
+            Bundle.main.url(forResource: "config", withExtension: "json", subdirectory: "Examples")?
+                .deletingLastPathComponent().path
+        }()
+        guard let watchPath, !watchPath.isEmpty else { return }
+        let dir = URL(fileURLWithPath: (watchPath as NSString).expandingTildeInPath)
+        guard FileManager.default.fileExists(atPath: dir.path) else { return }
+
+        var leftWidth: CGFloat = 0
+        var rightWidth: CGFloat = 0
+        for managedWindow in managedWindows {
+            let w = managedWindow.window.frame.width
+            switch managedWindow.slot.anchor {
+            case .dockLeft:  leftWidth = w
+            case .dockRight: rightWidth = w
+            }
+        }
+
+        // Rough char estimate: system rounded font at 13pt ≈ 7pt per char
+        let context: [String: Any] = [
+            "leftWidth": Int(leftWidth),
+            "rightWidth": Int(rightWidth),
+            "maxCharsLeft": Int(leftWidth / 7),
+            "maxCharsRight": Int(rightWidth / 7),
+            "maxCharsPerLine": Int(max(leftWidth, rightWidth) / 7),
+            "updatedAt": ISO8601DateFormatter().string(from: Date())
+        ]
+
+        let finalURL = dir.appendingPathComponent("hud_context.json")
+        if let data = try? JSONSerialization.data(withJSONObject: context, options: .prettyPrinted) {
+            try? data.write(to: finalURL)
+        }
     }
 }

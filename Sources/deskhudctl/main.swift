@@ -125,9 +125,12 @@ struct DeskHUDCTL {
           (e.g. "2026-07-01 → 2026-08-15") and current progress in `value` (0–1).
         - Use `durationSeconds` for important items that need more reading time.
           Default is 4s; long text might need 8-12s; quick status needs 2-3s.
-        - Status items with `state` get colored dots (green/cyan/yellow/red).
-          Text items show clean title+subtitle without dots — use for info, not tasks.
-        - Keep content concise — the panel is small. Prefer short phrases over sentences.
+        - Status items with `state` get colored title text (green/cyan/yellow/red) —
+          no dots, just color-coded text for a cleaner look.
+        - Keep content concise — the panel is narrow. Read `hud_context.json`
+          for live width measurements (`maxCharsLeft`, `maxCharsRight`).
+        - DeskHUD writes `hud_context.json` to the watch directory on launch and
+          periodically. It contains the current available character widths.
 
         ## HUD Document (hud.json or full document)
         {
