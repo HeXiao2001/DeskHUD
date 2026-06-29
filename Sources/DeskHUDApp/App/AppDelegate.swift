@@ -229,9 +229,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func installMenuBarItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "rectangle.split.2x2",
-                                    accessibilityDescription: "DeskHUD")
-            button.image?.isTemplate = true
+            if let image = Bundle.main.image(forResource: "DeskHUDMenuTemplate") {
+                image.isTemplate = true
+                button.image = image
+            } else {
+                button.image = NSImage(systemSymbolName: "rectangle.split.2x2",
+                                        accessibilityDescription: "DeskHUD")
+                button.image?.isTemplate = true
+            }
         }
 
         let menu = NSMenu()
