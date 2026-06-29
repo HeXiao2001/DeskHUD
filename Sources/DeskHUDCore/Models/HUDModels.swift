@@ -98,6 +98,8 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
     public var fontSize: Double
     public var textOpacity: Double
     public var scrollIntervalSeconds: Double
+    public var leftPresentation: HUDPresentation
+    public var rightPresentation: HUDPresentation
 
     public init(
         width: Double = 0,   // 0 = auto-fill available space
@@ -109,7 +111,9 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
         maxLines: Int = 1,
         textOpacity: Double = 0.85,
         contentDensity: ContentDensity = .comfortable,
-        scrollIntervalSeconds: Double = 4
+        scrollIntervalSeconds: Double = 4,
+        leftPresentation: HUDPresentation = .pagerRail,
+        rightPresentation: HUDPresentation = .stack
     ) {
         self.width = width
         self.height = height
@@ -121,6 +125,8 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
         self.textOpacity = textOpacity
         self.contentDensity = contentDensity
         self.scrollIntervalSeconds = scrollIntervalSeconds
+        self.leftPresentation = leftPresentation
+        self.rightPresentation = rightPresentation
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -134,6 +140,8 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
         case fontSize
         case textOpacity
         case scrollIntervalSeconds
+        case leftPresentation
+        case rightPresentation
     }
 
     public init(from decoder: Decoder) throws {
@@ -150,6 +158,8 @@ public struct HUDWindowConfig: Codable, Equatable, Sendable {
         fontSize = try container.decodeIfPresent(Double.self, forKey: .fontSize) ?? defaults.fontSize
         textOpacity = try container.decodeIfPresent(Double.self, forKey: .textOpacity) ?? defaults.textOpacity
         scrollIntervalSeconds = try container.decodeIfPresent(Double.self, forKey: .scrollIntervalSeconds) ?? defaults.scrollIntervalSeconds
+        leftPresentation = try container.decodeIfPresent(HUDPresentation.self, forKey: .leftPresentation) ?? defaults.leftPresentation
+        rightPresentation = try container.decodeIfPresent(HUDPresentation.self, forKey: .rightPresentation) ?? defaults.rightPresentation
     }
 }
 
@@ -157,6 +167,12 @@ public enum ContentDensity: String, Codable, Sendable {
     case compact
     case comfortable
     case spacious
+}
+
+public enum HUDPresentation: String, Codable, CaseIterable, Sendable {
+    case stack
+    case pagerRail
+    case minimal
 }
 
 public struct HUDDocument: Codable, Equatable, Sendable {

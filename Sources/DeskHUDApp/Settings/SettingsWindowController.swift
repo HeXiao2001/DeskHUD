@@ -5,10 +5,12 @@ import SwiftUI
 @MainActor
 final class SettingsWindowController: NSWindowController {
     private var currentConfig: HUDConfig
+    private var currentStatus: HUDRuntimeStatus
     var onConfigChanged: ((HUDConfig) -> Void)?
 
-    init(config: HUDConfig) {
+    init(config: HUDConfig, status: HUDRuntimeStatus = HUDRuntimeStatus()) {
         self.currentConfig = config
+        self.currentStatus = status
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 450, height: 460),
@@ -30,7 +32,7 @@ final class SettingsWindowController: NSWindowController {
     }
 
     private func makeHostingView() -> NSHostingView<SettingsView> {
-        let view = SettingsView(config: currentConfig) { [weak self] newConfig in
+        let view = SettingsView(config: currentConfig, status: currentStatus) { [weak self] newConfig in
             self?.currentConfig = newConfig
             self?.onConfigChanged?(newConfig)
         }
@@ -44,10 +46,9 @@ final class SettingsWindowController: NSWindowController {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    /// Called when the config changes externally (e.g. file reload).
-    /// Replaces the view tree so SwiftUI picks up the fresh config.
-    func updateConfig(_ newConfig: HUDConfig) {
+    func updateConfig(_ newConfig: HUDConfig, status: HUDRuntimeStatus = HUDRuntimeStatus()) {
         currentConfig = newConfig
+        currentStatus = status
         window?.contentView = makeHostingView()
     }
 }

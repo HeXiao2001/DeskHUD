@@ -3,6 +3,13 @@ import ApplicationServices
 import DeskHUDCore
 import ServiceManagement
 
+struct HUDRuntimeStatus: Equatable {
+    var lastReloadAt: String?
+    var lastError: String?
+    var watchDirectory: String?
+    var accessibilityTrusted: Bool = false
+}
+
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let windowManager = HUDWindowManager()
@@ -10,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var currentConfig = HUDConfig()
     private var currentDocument = HUDDocument.empty
-    private var lastError: String?
+    private var runtimeStatus = HUDRuntimeStatus()
     private var settingsWindowController: SettingsWindowController?
     private var fileWatchers: [DispatchSourceFileSystemObject] = []
     private var reloadDebounceTimer: Timer?
@@ -150,7 +157,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func applyConfigAndDocument() {
         windowManager.show(document: currentDocument, config: currentConfig)
-        settingsWindowController?.updateConfig(currentConfig)
+        runtimeStatus.lastReloadAt = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+        runtimeStatus.watchDirectory = currentConfig.watchDirectory
+        runtimeStatus.accessibilityTrusted = AXIsProcessTrusted()
+        settingsWindowController?.updateConfig(currentConfig, status: runtimeStatus)
         updateMenuBarVisibility()
         setLoginItem(enabled: currentConfig.launchAtLogin)
         saveSettings()
@@ -187,7 +197,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 try SMAppService.mainApp.unregister()
             }
         } catch {
-            lastError = "Login item: \(error.localizedDescription)"
+            runtimeStatus.lastError = "Login item: \(error.localizedDescription)"
         }
     }
 
@@ -260,7 +270,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() {
         if settingsWindowController == nil {
-            settingsWindowController = SettingsWindowController(config: currentConfig)
+            settingsWindowController = SettingsWindowController(config: currentConfig, status: runtimeStatus)
             settingsWindowController?.onConfigChanged = { [weak self] newConfig in
                 Task { @MainActor [weak self] in
                     let dirChanged = newConfig.watchDirectory != self?.currentConfig.watchDirectory

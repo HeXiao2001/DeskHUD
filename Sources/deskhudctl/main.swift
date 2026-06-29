@@ -68,6 +68,8 @@ struct DeskHUDCTL {
             report(loader.loadHUD(from: url))
         case "config":
             report(loader.loadConfig(from: url))
+        case "slot":
+            report(loader.loadSlotContent(from: url))
         default:
             fputs("Unknown validation kind: \(kind)\n", stderr)
             Foundation.exit(2)

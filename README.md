@@ -6,7 +6,16 @@ DeskHUD watches JSON files and renders lightweight status panels in the unused s
 
 ## Install
 
-**AI agent / one-liner:**
+DeskHUD is **source-first** — building from source is the recommended install path. DMG builds are self-signed for local testing and may trigger macOS security prompts. Official notarized builds require Apple Developer Program membership and are not yet available.
+
+**Source build (recommended):**
+```bash
+git clone https://github.com/HeXiao2001/DeskHUD.git
+cd DeskHUD
+./script/build_and_run.sh --verify
+```
+
+**DMG (self-signed, experimental):**
 ```bash
 VERSION=$(curl -s https://api.github.com/repos/HeXiao2001/DeskHUD/releases/latest | grep tag_name | head -1 | cut -d'"' -f4) && curl -fsSL "https://github.com/HeXiao2001/DeskHUD/releases/download/$VERSION/DeskHUD-${VERSION}.dmg" -o /tmp/DeskHUD.dmg && hdiutil attach /tmp/DeskHUD.dmg -nobrowse && cp -R /Volumes/DeskHUD*/DeskHUD.app /Applications/ && hdiutil detach /Volumes/DeskHUD* && open /Applications/DeskHUD.app
 ```

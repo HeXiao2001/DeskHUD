@@ -15,7 +15,12 @@ struct HUDPanelView: View {
         return sections[sectionIndex]
     }
 
-    private var isPager: Bool { slot.anchor == .dockLeft }
+    private var presentation: HUDPresentation {
+        switch slot.anchor {
+        case .dockLeft:  return config.window.leftPresentation
+        case .dockRight: return config.window.rightPresentation
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -23,9 +28,12 @@ struct HUDPanelView: View {
                 sectionTitle(title)
             }
             if let section = currentSection {
-                if isPager {
+                switch presentation {
+                case .pagerRail:
                     pagerContent(section: section)
-                } else {
+                case .minimal:
+                    minimalContent(section: section)
+                case .stack:
                     stackContent(section: section)
                 }
             }
@@ -39,7 +47,22 @@ struct HUDPanelView: View {
         .shadow(color: textShadowColor, radius: textShadowRadius, x: 0, y: 1)
     }
 
-    // MARK: - Pager (left panel: 1 item + rail)
+    // MARK: - Minimal (1 item, no rail)
+
+    private func minimalContent(section: HUDSection) -> some View {
+        let items = section.items
+        guard !items.isEmpty else { return AnyView(EmptyView()) }
+        let idx = scrollOffset % max(1, items.count)
+
+        return AnyView(
+            HUDItemView(item: items[idx], config: config)
+                .id(idx)
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.35), value: scrollOffset)
+        )
+    }
+
+    // MARK: - Pager (1 item + rail)
 
     private func pagerContent(section: HUDSection) -> some View {
         let items = section.items

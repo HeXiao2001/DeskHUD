@@ -4,10 +4,12 @@ import SwiftUI
 
 struct SettingsView: View {
     @State private var config: HUDConfig
+    let status: HUDRuntimeStatus
     let onConfigChanged: (HUDConfig) -> Void
 
-    init(config: HUDConfig, onConfigChanged: @escaping (HUDConfig) -> Void) {
+    init(config: HUDConfig, status: HUDRuntimeStatus = HUDRuntimeStatus(), onConfigChanged: @escaping (HUDConfig) -> Void) {
         _config = State(initialValue: config)
+        self.status = status
         self.onConfigChanged = onConfigChanged
     }
 
@@ -19,7 +21,7 @@ struct SettingsView: View {
             LayoutPane(config: $config)
                 .tabItem { Label("Layout", systemImage: "rectangle.resize") }
                 .frame(width: 380, height: 280)
-            BehaviorPane(config: $config)
+            BehaviorPane(config: $config, status: status)
                 .tabItem { Label("Behavior", systemImage: "gearshape") }
                 .frame(width: 380, height: 280)
         }
@@ -71,6 +73,18 @@ private struct LayoutPane: View {
 
     var body: some View {
         Form {
+            Picker("Left:", selection: $config.window.leftPresentation) {
+                Text("Pager Rail").tag(HUDPresentation.pagerRail)
+                Text("Stack").tag(HUDPresentation.stack)
+                Text("Minimal").tag(HUDPresentation.minimal)
+            }
+
+            Picker("Right:", selection: $config.window.rightPresentation) {
+                Text("Stack").tag(HUDPresentation.stack)
+                Text("Pager Rail").tag(HUDPresentation.pagerRail)
+                Text("Minimal").tag(HUDPresentation.minimal)
+            }
+
             LabeledContent("Width (0=auto):") {
                 TextField("", value: $config.window.width, format: .number)
                     .frame(width: 80)
@@ -114,6 +128,7 @@ private struct LayoutPane: View {
 
 private struct BehaviorPane: View {
     @Binding var config: HUDConfig
+    let status: HUDRuntimeStatus
 
     var body: some View {
         Form {
@@ -158,6 +173,25 @@ private struct BehaviorPane: View {
             Toggle("Launch at Login", isOn: $config.launchAtLogin)
             Toggle("Hide Menu Bar", isOn: $config.hideMenuBar)
             Toggle("Debug Logging", isOn: $config.debugLogging)
+
+            Divider()
+
+            Group {
+                HStack {
+                    Text("Status:")
+                    Text(status.lastError == nil ? "OK" : "Error")
+                        .foregroundStyle(status.lastError == nil ? Color.green : Color.red)
+                }
+                if let err = status.lastError {
+                    Text(err).font(.caption).foregroundStyle(.red)
+                }
+                if let dir = status.watchDirectory {
+                    Text("Watch: \(dir)").font(.caption).foregroundStyle(.secondary)
+                }
+                if let time = status.lastReloadAt {
+                    Text("Reload: \(time)").font(.caption).foregroundStyle(.secondary)
+                }
+            }
         }
     }
 
