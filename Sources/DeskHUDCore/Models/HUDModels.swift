@@ -82,9 +82,27 @@ public enum FullscreenMode: String, Codable, CaseIterable, Sendable {
 }
 
 public enum BackgroundStyle: String, Codable, CaseIterable, Sendable {
-    case glass  // System Liquid Glass — matches Dock appearance
     case clear  // No background, only text and glyphs
-    case dark   // Dark semi-transparent overlay (classic HUD)
+
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        switch raw {
+        case "clear", "glass", "dark":
+            self = .clear
+        default:
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "Unsupported backgroundStyle: \(raw). DeskHUD now only supports clear."
+                )
+            )
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode("clear")
+    }
 }
 
 public enum DisplayMode: String, Codable, CaseIterable, Sendable {

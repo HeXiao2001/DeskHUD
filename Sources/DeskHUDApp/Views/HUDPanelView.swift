@@ -41,10 +41,8 @@ struct HUDPanelView: View {
         .padding(padding)
         .frame(width: width, height: height, alignment: .topLeading)
         .clipped()
-        .background(panelBackground)
-        .clipShape(RoundedRectangle(cornerRadius: config.window.cornerRadius, style: .continuous))
-        .overlay(panelBorder)
-        .shadow(color: textShadowColor, radius: textShadowRadius, x: 0, y: 1)
+        .background(Color.clear)
+        .shadow(color: .black.opacity(0.45), radius: 3, x: 0, y: 1)
     }
 
     // MARK: - Minimal (1 item, no rail)
@@ -133,31 +131,6 @@ struct HUDPanelView: View {
         }
     }
 
-    private var textShadowColor: Color {
-        config.backgroundStyle == .clear ? .black.opacity(0.45) : .clear
-    }
-
-    private var textShadowRadius: CGFloat {
-        config.backgroundStyle == .clear ? 3 : 0
-    }
-
-    @ViewBuilder
-    private var panelBackground: some View {
-        switch config.backgroundStyle {
-        case .glass:
-            NativeGlassView()
-        case .clear: Color.clear
-        case .dark:  Color.black.opacity(config.window.opacity)
-        }
-    }
-
-    @ViewBuilder
-    private var panelBorder: some View {
-        if config.backgroundStyle != .clear {
-            RoundedRectangle(cornerRadius: config.window.cornerRadius, style: .continuous)
-                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-        }
-    }
 }
 
 // MARK: - Item dispatch

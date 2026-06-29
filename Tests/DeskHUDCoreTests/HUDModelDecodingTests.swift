@@ -49,11 +49,21 @@ final class HUDModelDecodingTests: XCTestCase {
 
         XCTAssertEqual(config.effectProfile, .low)
         XCTAssertEqual(config.fullscreenMode, .overlay)
+        XCTAssertEqual(config.backgroundStyle, .clear)
         XCTAssertEqual(config.launchAtLogin, false)
         XCTAssertEqual(config.hideMenuBar, false)
         XCTAssertEqual(config.window.width, 320)
         XCTAssertEqual(config.window.fontSize, 13)
         XCTAssertEqual(config.window.textOpacity, 0.85)
+    }
+
+
+    func testLegacyBackgroundStylesDecodeAsClear() throws {
+        for style in ["clear", "glass", "dark"] {
+            let json = #"{"backgroundStyle":"\#(style)"}"#.data(using: .utf8)!
+            let config = try JSONDecoder().decode(HUDConfig.self, from: json)
+            XCTAssertEqual(config.backgroundStyle, .clear)
+        }
     }
 
     func testLoaderReportsInvalidJSONWithoutThrowing() throws {

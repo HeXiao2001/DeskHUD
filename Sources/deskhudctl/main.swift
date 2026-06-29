@@ -219,7 +219,7 @@ struct DeskHUDCTL {
           "fullscreenMode": "overlay",     // overlay | desktopOnly
           "displays": "all",               // all | primary | mouse | fixed
           "fixedDisplayID": null,          // UInt32, used when displays=fixed
-          "backgroundStyle": "clear",      // glass | clear | dark
+          "backgroundStyle": "clear",      // clear only; legacy glass/dark decode as clear
           "calendarEvents": false,         // bool: enable macOS Calendar?
           "watchDirectory": null,          // string or null: path to directory with config+hud JSONs
           "debugLogging": true,            // bool
@@ -228,7 +228,7 @@ struct DeskHUDCTL {
             "height": 82,
             "margin": 18,
             "cornerRadius": 14,
-            "opacity": 0.84,              // used only when backgroundStyle=dark
+            "opacity": 0.84,              // legacy/reserved; HUD background is always clear
             "maxLines": 2,                // max lines in list items
             "contentDensity": "comfortable", // compact | comfortable | spacious
             "scrollIntervalSeconds": 4     // seconds between auto-scroll pages

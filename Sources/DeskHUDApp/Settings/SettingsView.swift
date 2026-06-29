@@ -87,12 +87,6 @@ private struct AppearancePane: View {
 
     var body: some View {
         Form {
-            Picker("Background:", selection: $config.backgroundStyle) {
-                Text("Liquid Glass").tag(DeskHUDCore.BackgroundStyle.glass)
-                Text("Clear (No BG)").tag(DeskHUDCore.BackgroundStyle.clear)
-                Text("Dark").tag(DeskHUDCore.BackgroundStyle.dark)
-            }
-
             Picker("Effect:", selection: $config.effectProfile) {
                 Text("Low").tag(EffectProfile.low)
                 Text("Medium").tag(EffectProfile.medium)
@@ -105,18 +99,9 @@ private struct AppearancePane: View {
                 Text("Spacious").tag(ContentDensity.spacious)
             }
 
-            Slider(value: $config.window.opacity, in: 0.3 ... 1.0) {
-                Text("Opacity: \(Int(config.window.opacity * 100))%")
-            }
-
             LabeledContent("Font Size:") {
                 Stepper("\(Int(config.window.fontSize))pt",
                         value: $config.window.fontSize, in: 9 ... 18, step: 1)
-            }
-
-            LabeledContent("Corner Radius:") {
-                Stepper("\(Int(config.window.cornerRadius))pt",
-                        value: $config.window.cornerRadius, in: 0 ... 32, step: 2)
             }
         }
     }
