@@ -7,3 +7,4 @@ script/DeskHUD.iconset/
 release/
 .codex/
 docs/superpowers/
+script/*.png
