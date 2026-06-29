@@ -144,7 +144,16 @@ struct HUDPanelView: View {
     @ViewBuilder
     private var panelBackground: some View {
         switch config.backgroundStyle {
-        case .glass: Color.clear.background(.ultraThinMaterial)
+        case .glass:
+            ZStack {
+                NativeGlassView()
+                // Subtle top highlight — mimics the Dock's light reflection
+                LinearGradient(
+                    colors: [Color.white.opacity(0.06), Color.clear],
+                    startPoint: .top,
+                    endPoint: UnitPoint(x: 0.5, y: 0.3)
+                )
+            }
         case .clear: Color.clear
         case .dark:  Color.black.opacity(config.window.opacity)
         }
