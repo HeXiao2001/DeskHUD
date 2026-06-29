@@ -217,7 +217,8 @@ struct DeskHUDCTL {
           "version": 1,
           "effectProfile": "low",          // low | medium | high
           "fullscreenMode": "overlay",     // overlay | desktopOnly
-          "displays": "all",               // all | main
+          "displays": "all",               // all | primary | mouse | fixed
+          "fixedDisplayID": null,          // UInt32, used when displays=fixed
           "backgroundStyle": "clear",      // glass | clear | dark
           "calendarEvents": false,         // bool: enable macOS Calendar?
           "watchDirectory": null,          // string or null: path to directory with config+hud JSONs

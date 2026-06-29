@@ -26,6 +26,7 @@ final class HUDWindowManager {
     private var lastMouseLocation: NSPoint = .zero
     private var lastKnownDockRect: NSRect?
     private var debugEnabled = false
+    private var lastMouseScreenID: UInt32?
     private var workspaceObservers: [NSObjectProtocol] = []
 
     private struct PerSlotState {
@@ -89,11 +90,18 @@ final class HUDWindowManager {
     }
 
     /// Apply config changes to existing windows without tearing them down.
-    /// Used for live settings preview — no flicker, no timer restart.
+    /// When display target or fixed display ID changes, rebuilds all windows.
     func reconfigure(config: HUDConfig) {
+        let displayChanged = activeConfig?.displays != config.displays
+            || activeConfig?.fixedDisplayID != config.fixedDisplayID
+
+        if displayChanged, let document = activeDocument {
+            show(document: document, config: config)
+            return
+        }
+
         activeConfig = config
         debugEnabled = config.debugLogging
-        // Restart scroll timer with new interval
         stopScrollTimer()
         installScrollTimer()
         for managedWindow in managedWindows {
@@ -172,6 +180,20 @@ final class HUDWindowManager {
 
     private func handleMouseMoved() {
         guard let config = activeConfig else { return }
+
+        // Mouse Display: rebuild HUD when mouse moves to another screen
+        if config.displays == .mouse {
+            let mouseScreen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) }
+            let currentID = mouseScreen.flatMap { screenID($0) }
+            if currentID != lastMouseScreenID {
+                lastMouseScreenID = currentID
+                if let document = activeDocument {
+                    show(document: document, config: config)
+                    return
+                }
+            }
+        }
+
         lastMouseLocation = NSEvent.mouseLocation
         let shouldFollow = isInBottomDockTrackingArea(lastMouseLocation)
         if shouldFollow == isMouseNearBottomDock { return }
@@ -650,6 +672,10 @@ final class HUDWindowManager {
             width: rect.width,
             height: rect.height
         )
+    }
+
+    private func screenID(_ screen: NSScreen) -> UInt32? {
+        screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32
     }
 
     private func logDebug(_ message: String) {
