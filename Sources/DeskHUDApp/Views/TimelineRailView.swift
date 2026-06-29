@@ -31,7 +31,7 @@ struct TimelineRailView: View {
                         .foregroundStyle(.white.opacity(0.35))
                 }
             }
-            .padding(.top, 2)
+            .padding(.top, 4)
         )
     }
 

@@ -76,10 +76,7 @@ struct HUDPanelView: View {
                     .transition(.opacity)
                     .animation(.easeInOut(duration: 0.35), value: scrollOffset)
                 Spacer(minLength: 0)
-                HStack {
-                    Spacer()
-                    TimelineRailView(section: section, activeIndex: idx, config: config)
-                }
+                TimelineRailView(section: section, activeIndex: idx, config: config)
             }
         )
     }
