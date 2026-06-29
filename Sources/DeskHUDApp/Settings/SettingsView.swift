@@ -15,22 +15,68 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
+            DisplayPane(config: $config, status: status)
+                .tabItem { Label("Display", systemImage: "display") }
+                .frame(width: 500, height: 360)
             AppearancePane(config: $config)
                 .tabItem { Label("Appearance", systemImage: "paintbrush") }
-                .frame(width: 380, height: 280)
-            LayoutPane(config: $config)
-                .tabItem { Label("Layout", systemImage: "rectangle.resize") }
-                .frame(width: 380, height: 280)
-            BehaviorPane(config: $config, status: status)
-                .tabItem { Label("Behavior", systemImage: "gearshape") }
-                .frame(width: 380, height: 280)
+                .frame(width: 500, height: 360)
+            ContentPane(config: $config)
+                .tabItem { Label("Content", systemImage: "list.bullet.rectangle") }
+                .frame(width: 500, height: 360)
+            AdvancedPane(config: $config, status: status)
+                .tabItem { Label("Advanced", systemImage: "gearshape") }
+                .frame(width: 500, height: 360)
         }
-        .frame(width: 420, height: 330)
+        .frame(width: 540, height: 420)
         .padding(.top, 8)
         .scenePadding()
         .onChange(of: config) { _, newValue in
             onConfigChanged(newValue)
         }
+    }
+}
+
+// MARK: - Display
+
+private struct DisplayPane: View {
+    @Binding var config: HUDConfig
+    let status: HUDRuntimeStatus
+
+    var body: some View {
+        Form {
+            Picker("Display Target:", selection: $config.displays) {
+                Text("All Displays").tag(DisplayMode.all)
+                Text("Primary Display").tag(DisplayMode.primary)
+                Text("Mouse Display").tag(DisplayMode.mouse)
+                Text("Fixed Display").tag(DisplayMode.fixed)
+            }
+
+            if config.displays == .fixed {
+                Picker("Fixed Display:", selection: Binding(
+                    get: { config.fixedDisplayID ?? 0 },
+                    set: { config.fixedDisplayID = $0 }
+                )) {
+                    ForEach(NSScreen.screens, id: \.hash) { screen in
+                        Text(HUDDisplayResolver.displayName(for: screen))
+                            .tag(screenDisplayID(screen))
+                    }
+                }
+            }
+
+            Picker("Full-Screen:", selection: $config.fullscreenMode) {
+                Text("Show in Full-Screen Spaces").tag(FullscreenMode.overlay)
+                Text("Desktop Spaces Only").tag(FullscreenMode.desktopOnly)
+            }
+
+            if let err = status.lastError, config.displays == .fixed {
+                Text(err).font(.caption).foregroundStyle(.red)
+            }
+        }
+    }
+
+    private func screenDisplayID(_ screen: NSScreen) -> UInt32 {
+        screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32 ?? 0
     }
 }
 
@@ -62,13 +108,23 @@ private struct AppearancePane: View {
             Slider(value: $config.window.opacity, in: 0.3 ... 1.0) {
                 Text("Opacity: \(Int(config.window.opacity * 100))%")
             }
+
+            LabeledContent("Font Size:") {
+                Stepper("\(Int(config.window.fontSize))pt",
+                        value: $config.window.fontSize, in: 9 ... 18, step: 1)
+            }
+
+            LabeledContent("Corner Radius:") {
+                Stepper("\(Int(config.window.cornerRadius))pt",
+                        value: $config.window.cornerRadius, in: 0 ... 32, step: 2)
+            }
         }
     }
 }
 
-// MARK: - Layout
+// MARK: - Content
 
-private struct LayoutPane: View {
+private struct ContentPane: View {
     @Binding var config: HUDConfig
 
     var body: some View {
@@ -85,94 +141,69 @@ private struct LayoutPane: View {
                 Text("Minimal").tag(HUDPresentation.minimal)
             }
 
-            LabeledContent("Width (0=auto):") {
-                TextField("", value: $config.window.width, format: .number)
-                    .frame(width: 80)
-                Stepper("", value: $config.window.width, in: 0 ... 600, step: 4)
-            }
-
-            LabeledContent("Height:") {
-                TextField("", value: $config.window.height, format: .number)
-                    .frame(width: 80)
-                Stepper("", value: $config.window.height, in: 40 ... 200, step: 2)
-            }
-
-            LabeledContent("Margin:") {
-                TextField("", value: $config.window.margin, format: .number)
-                    .frame(width: 80)
-                Stepper("", value: $config.window.margin, in: 2 ... 40, step: 2)
-            }
-
-            LabeledContent("Corner Radius:") {
-                TextField("", value: $config.window.cornerRadius, format: .number)
-                    .frame(width: 80)
-                Stepper("", value: $config.window.cornerRadius, in: 0 ... 32, step: 2)
+            LabeledContent("Scroll speed:") {
+                Stepper("\(Int(config.window.scrollIntervalSeconds))s",
+                        value: $config.window.scrollIntervalSeconds, in: 2 ... 15, step: 1)
             }
 
             LabeledContent("Max Lines:") {
-                TextField("", value: Binding(
-                    get: { Double(config.window.maxLines) },
-                    set: { config.window.maxLines = Int($0) }
-                ), format: .number)
-                .frame(width: 80)
-                Stepper("", value: Binding(
-                    get: { Double(config.window.maxLines) },
-                    set: { config.window.maxLines = Int($0) }
-                ), in: 1 ... 8, step: 1)
+                Stepper("\(config.window.maxLines)",
+                        value: Binding(get: { Double(config.window.maxLines) },
+                                       set: { config.window.maxLines = Int($0) }),
+                        in: 1 ... 6, step: 1)
+            }
+
+            Toggle("Calendar Events", isOn: $config.calendarEvents)
+
+            LabeledContent("Watch Dir:") {
+                HStack(spacing: 4) {
+                    TextField("path", text: Binding(
+                        get: { config.watchDirectory ?? "" },
+                        set: { config.watchDirectory = $0.isEmpty ? nil : $0 }))
+                    .frame(minWidth: 160)
+                    Button("Choose...") { browseWatchDir() }
+                }
             }
         }
     }
+
+    private func browseWatchDir() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = false
+        panel.prompt = "Select Watch Directory"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        config.watchDirectory = url.path
+    }
 }
 
-// MARK: - Behavior
+// MARK: - Advanced
 
-private struct BehaviorPane: View {
+private struct AdvancedPane: View {
     @Binding var config: HUDConfig
     let status: HUDRuntimeStatus
 
     var body: some View {
         Form {
-            Picker("Fullscreen:", selection: $config.fullscreenMode) {
-                Text("Overlay").tag(FullscreenMode.overlay)
-                Text("Desktop Only").tag(FullscreenMode.desktopOnly)
-            }
-
-            Picker("Displays:", selection: $config.displays) {
-                Text("All Displays").tag(DisplayMode.all)
-                Text("Main Only").tag(DisplayMode.main)
-            }
-
-            LabeledContent("Font Size:") {
-                Stepper("\(Int(config.window.fontSize))pt",
-                        value: Binding(
-                            get: { config.window.fontSize },
-                            set: { config.window.fontSize = $0 }
-                        ), in: 9 ... 18, step: 1)
-            }
-
-            LabeledContent("Scroll speed:") {
-                Stepper("\(Int(config.window.scrollIntervalSeconds))s per page",
-                        value: Binding(
-                            get: { config.window.scrollIntervalSeconds },
-                            set: { config.window.scrollIntervalSeconds = $0 }
-                        ), in: 2 ... 15, step: 1)
-            }
-
-            LabeledContent("Watch Dir:") {
-                HStack(spacing: 4) {
-                    TextField("cloud sync path", text: Binding(
-                        get: { config.watchDirectory ?? "" },
-                        set: { config.watchDirectory = $0.isEmpty ? nil : $0 }
-                    ))
-                    .frame(minWidth: 180)
-                    Button("Choose...") { browseWatchDir() }
-                }
-            }
-
-            Toggle("Calendar Events", isOn: $config.calendarEvents)
             Toggle("Launch at Login", isOn: $config.launchAtLogin)
             Toggle("Hide Menu Bar", isOn: $config.hideMenuBar)
             Toggle("Debug Logging", isOn: $config.debugLogging)
+
+            LabeledContent("Width (0=auto):") {
+                TextField("", value: $config.window.width, format: .number).frame(width: 70)
+                Stepper("", value: $config.window.width, in: 0 ... 600, step: 4)
+            }
+
+            LabeledContent("Height:") {
+                TextField("", value: $config.window.height, format: .number).frame(width: 70)
+                Stepper("", value: $config.window.height, in: 40 ... 200, step: 2)
+            }
+
+            LabeledContent("Margin:") {
+                TextField("", value: $config.window.margin, format: .number).frame(width: 70)
+                Stepper("", value: $config.window.margin, in: 2 ... 40, step: 2)
+            }
 
             Divider()
 
@@ -189,19 +220,9 @@ private struct BehaviorPane: View {
                     Text("Watch: \(dir)").font(.caption).foregroundStyle(.secondary)
                 }
                 if let time = status.lastReloadAt {
-                    Text("Reload: \(time)").font(.caption).foregroundStyle(.secondary)
+                    Text("Reloaded: \(time)").font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
-    }
-
-    private func browseWatchDir() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = false
-        panel.prompt = "Select Watch Directory"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        config.watchDirectory = url.path
     }
 }

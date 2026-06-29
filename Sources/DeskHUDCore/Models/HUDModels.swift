@@ -5,6 +5,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
     public var effectProfile: EffectProfile
     public var fullscreenMode: FullscreenMode
     public var displays: DisplayMode
+    public var fixedDisplayID: UInt32?
     public var backgroundStyle: BackgroundStyle
     public var window: HUDWindowConfig
     public var calendarEvents: Bool
@@ -18,6 +19,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         effectProfile: EffectProfile = .low,
         fullscreenMode: FullscreenMode = .desktopOnly,
         displays: DisplayMode = .all,
+        fixedDisplayID: UInt32? = nil,
         backgroundStyle: BackgroundStyle = .clear,
         calendarEvents: Bool = false,
         launchAtLogin: Bool = false,
@@ -30,6 +32,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         self.effectProfile = effectProfile
         self.fullscreenMode = fullscreenMode
         self.displays = displays
+        self.fixedDisplayID = fixedDisplayID
         self.backgroundStyle = backgroundStyle
         self.calendarEvents = calendarEvents
         self.launchAtLogin = launchAtLogin
@@ -44,6 +47,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         case effectProfile
         case fullscreenMode
         case displays
+        case fixedDisplayID
         case backgroundStyle
         case window
         case calendarEvents
@@ -61,6 +65,7 @@ public struct HUDConfig: Codable, Equatable, Sendable {
         effectProfile = try container.decodeIfPresent(EffectProfile.self, forKey: .effectProfile) ?? defaults.effectProfile
         fullscreenMode = try container.decodeIfPresent(FullscreenMode.self, forKey: .fullscreenMode) ?? defaults.fullscreenMode
         displays = try container.decodeIfPresent(DisplayMode.self, forKey: .displays) ?? defaults.displays
+        fixedDisplayID = try container.decodeIfPresent(UInt32.self, forKey: .fixedDisplayID) ?? defaults.fixedDisplayID
         backgroundStyle = try container.decodeIfPresent(BackgroundStyle.self, forKey: .backgroundStyle) ?? defaults.backgroundStyle
         window = try container.decodeIfPresent(HUDWindowConfig.self, forKey: .window) ?? defaults.window
         calendarEvents = try container.decodeIfPresent(Bool.self, forKey: .calendarEvents) ?? defaults.calendarEvents
@@ -84,7 +89,10 @@ public enum BackgroundStyle: String, Codable, CaseIterable, Sendable {
 
 public enum DisplayMode: String, Codable, CaseIterable, Sendable {
     case all
-    case main
+    case primary
+    case mouse
+    case fixed
+    case main  // deprecated, maps to primary in HUDDisplayResolver
 }
 
 public struct HUDWindowConfig: Codable, Equatable, Sendable {

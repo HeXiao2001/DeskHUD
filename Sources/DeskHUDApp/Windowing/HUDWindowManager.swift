@@ -45,7 +45,7 @@ final class HUDWindowManager {
             slotStates[slot.id] = PerSlotState()
         }
 
-        let screens = config.displays == .main ? [NSScreen.main].compactMap { $0 } : NSScreen.screens
+        let screens = HUDDisplayResolver.screens(for: config)
         for screen in screens {
             for slot in document.slots {
                 guard slot.anchor == .dockLeft || slot.anchor == .dockRight else { continue }
